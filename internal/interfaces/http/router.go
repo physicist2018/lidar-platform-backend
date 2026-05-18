@@ -1,0 +1,32 @@
+package http
+
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/lidar-platform/backend/internal/application/usecases"
+	httpHandlers "github.com/lidar-platform/backend/internal/interfaces/http/handlers"
+	authMw "github.com/lidar-platform/backend/internal/interfaces/http/middleware"
+)
+
+func NewRouter(authUseCase *usecases.AuthUseCase) *chi.Mux {
+	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Heartbeat("/ping"))
+
+	authHandler := httpHandlers.NewAuthHandler(authUseCase)
+
+	r.Post("/auth/register", authHandler.Register)
+	r.Post("/auth/login", authHandler.Login)
+	r.Get("/health", httpHandlers.HealthCheck)
+
+	r.Group(func(r chi.Router) {
+		r.Use(authMw.AuthMiddleware(authUseCase))
+		// future protected routes here
+	})
+
+	return r
+}
