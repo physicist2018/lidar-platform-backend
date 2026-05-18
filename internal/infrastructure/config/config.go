@@ -15,6 +15,11 @@ type Config struct {
 	MaxHeaderBytes int
 	JWTSecret      string
 	JWTExpiry      time.Duration
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioBucket    string
+	MinioUseSSL    bool
 }
 
 func Load() (*Config, error) {
@@ -26,6 +31,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("JWT_SECRET env is required")
 	}
 
+	minioBucket := envOrDefault("MINIO_BUCKET", "lidar-experiments")
+
 	return &Config{
 		ServerAddr:     fmt.Sprintf("%s:%s", host, port),
 		ReadTimeout:    parseDuration(envOrDefault("READ_TIMEOUT", "10s"), 10*time.Second),
@@ -34,6 +41,11 @@ func Load() (*Config, error) {
 		MaxHeaderBytes: intEnv("MAX_HEADER_BYTES", 1<<20), // 1MB
 		JWTSecret:      jwtSecret,
 		JWTExpiry:      parseDuration(envOrDefault("JWT_EXPIRY", "24h"), 24*time.Hour),
+		MinioEndpoint:  envOrDefault("MINIO_ENDPOINT", "localhost:9000"),
+		MinioAccessKey: envOrDefault("MINIO_ACCESS_KEY", "minioadmin"),
+		MinioSecretKey: envOrDefault("MINIO_SECRET_KEY", "minioadmin"),
+		MinioBucket:    minioBucket,
+		MinioUseSSL:    envOrDefault("MINIO_USE_SSL", "false") == "true",
 	}, nil
 }
 

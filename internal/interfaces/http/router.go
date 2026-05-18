@@ -8,16 +8,17 @@ import (
 	authMw "github.com/lidar-platform/backend/internal/interfaces/http/middleware"
 )
 
-func NewRouter(authUseCase *usecases.AuthUseCase) *chi.Mux {
+func NewRouter(authUseCase *usecases.AuthUseCase, expUseCase *usecases.ExperimentUseCase) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Heartbeat("/ping"))
+	r.Use(middleware.Heartbeat("/health"))
 
 	authHandler := httpHandlers.NewAuthHandler(authUseCase)
+	expHandler := httpHandlers.NewExperimentHandler(expUseCase)
 
 	r.Post("/auth/register", authHandler.Register)
 	r.Post("/auth/login", authHandler.Login)
@@ -25,7 +26,7 @@ func NewRouter(authUseCase *usecases.AuthUseCase) *chi.Mux {
 
 	r.Group(func(r chi.Router) {
 		r.Use(authMw.AuthMiddleware(authUseCase))
-		// future protected routes here
+		r.Post("/api/experiments", expHandler.Create)
 	})
 
 	return r

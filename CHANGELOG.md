@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0] — 2025-01-20
+
+### Added
+- Загрузка эксперимента (`POST /api/experiments`, авторизованный):
+  - Доменная сущность `Experiment` (ID, UserID, Title, Comments, StartDateTime, StopDateTime, BgrFilePath, ZipFilePath, MeteoProfilePath)
+  - Порты: `ExperimentRepository`, `FileStorage`
+  - `ExperimentUseCase` — извлекает StartDateTime/StopDateTime из licel-файлов внутри zip, сохраняет файлы в MinIO
+  - In-memory репозиторий экспериментов
+  - MinIO-адаптер `FileStorage` (автосоздание бакета)
+  - Multipart/form-data хендлер: обязательные title/comments/ZipFile, опциональные BgrFile/MeteoFile
+  - Конфигурация MinIO (`MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_USE_SSL`)
+- Зависимости: `licelfile` (извлечение MeasurementStartTime/StopTime), `minio-go/v7`
+
 ## [0.1.0] — 2025-01-20
 
 ### Added

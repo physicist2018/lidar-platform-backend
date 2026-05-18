@@ -1,0 +1,8 @@
+# Binaries
+/web
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

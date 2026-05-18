@@ -13,6 +13,7 @@ import (
 	"github.com/lidar-platform/backend/internal/infrastructure/auth"
 	"github.com/lidar-platform/backend/internal/infrastructure/config"
 	"github.com/lidar-platform/backend/internal/infrastructure/repository"
+	"github.com/lidar-platform/backend/internal/infrastructure/storage"
 	chiRouter "github.com/lidar-platform/backend/internal/interfaces/http"
 )
 
@@ -22,13 +23,21 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	// Auth
 	userRepo := repository.NewInMemoryUserRepository()
 	bcryptHasher := auth.NewBcryptHasher(0)
 	jwtProvider := auth.NewJWTProvider(cfg.JWTSecret, cfg.JWTExpiry)
-
 	authUseCase := usecases.NewAuthUseCase(userRepo, bcryptHasher, jwtProvider)
 
-	router := chiRouter.NewRouter(authUseCase)
+	// Experiments
+	minioStorage, err := storage.NewMinioStorage(cfg.MinioEndpoint, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioBucket, cfg.MinioUseSSL)
+	if err != nil {
+		log.Fatalf("failed to init minio storage: %v", err)
+	}
+	expRepo := repository.NewInMemoryExperimentRepository()
+	expUseCase := usecases.NewExperimentUseCase(expRepo, minioStorage)
+
+	router := chiRouter.NewRouter(authUseCase, expUseCase)
 
 	srv := &http.Server{
 		Addr:           cfg.ServerAddr,
