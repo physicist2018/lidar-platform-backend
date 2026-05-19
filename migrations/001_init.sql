@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS experiment_profiles (
     discr_level REAL NOT NULL DEFAULT 0,
     device_id TEXT NOT NULL DEFAULT '',
     n_crate INTEGER NOT NULL DEFAULT 0,
+    measurement_start_time TEXT NOT NULL DEFAULT '',
+    measurement_stop_time TEXT NOT NULL DEFAULT '',
     altitudes TEXT NOT NULL DEFAULT '[]',
     data TEXT NOT NULL DEFAULT '[]',
     hmin REAL NOT NULL DEFAULT 0,

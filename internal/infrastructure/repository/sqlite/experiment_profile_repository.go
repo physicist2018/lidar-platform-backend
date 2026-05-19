@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 
 	"github.com/lidar-platform/backend/internal/domain"
 )
@@ -26,12 +27,14 @@ func (r *ExperimentProfileRepository) Create(ctx context.Context, p *domain.Expe
 			active, photon, laser_type, n_data_points, high_voltage,
 			bin_width, wavelength, polarization, bin_shift, dec_bin_shift,
 			adc_bits, n_shots, discr_level, device_id, n_crate,
+			measurement_start_time, measurement_stop_time,
 			altitudes, data, hmin, hmax, bgr_type
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.ID, p.ExperimentID, p.FileName,
 		boolToInt(p.Active), boolToInt(p.Photon), p.LaserType, p.NDataPoints, p.HighVoltage,
 		p.BinWidth, p.Wavelength, p.Polarization, p.BinShift, p.DecBinShift,
 		p.AdcBits, p.NShots, p.DiscrLevel, p.DeviceID, p.NCrate,
+		p.MeasurementStartTime.Format(time.RFC3339), p.MeasurementStopTime.Format(time.RFC3339),
 		string(altitudesJSON), string(dataJSON), p.Hmin, p.Hmax, p.BgrType,
 	)
 	return err
@@ -43,6 +46,7 @@ func (r *ExperimentProfileRepository) FindByExperimentID(ctx context.Context, ex
 		        active, photon, laser_type, n_data_points, high_voltage,
 		        bin_width, wavelength, polarization, bin_shift, dec_bin_shift,
 		        adc_bits, n_shots, discr_level, device_id, n_crate,
+		        measurement_start_time, measurement_stop_time,
 		        altitudes, data, hmin, hmax, bgr_type
 		 FROM experiment_profiles WHERE experiment_id = ?`, experimentID,
 	)
@@ -73,11 +77,13 @@ func scanProfile(rows *sql.Rows) (*domain.ExperimentProfile, error) {
 	var p domain.ExperimentProfile
 	var active, photon int
 	var altitudesJSON, dataJSON string
+	var measurementStartTime, measurementStopTime string
 
 	err := rows.Scan(&p.ID, &p.ExperimentID, &p.FileName,
 		&active, &photon, &p.LaserType, &p.NDataPoints, &p.HighVoltage,
 		&p.BinWidth, &p.Wavelength, &p.Polarization, &p.BinShift, &p.DecBinShift,
 		&p.AdcBits, &p.NShots, &p.DiscrLevel, &p.DeviceID, &p.NCrate,
+		&measurementStartTime, &measurementStopTime,
 		&altitudesJSON, &dataJSON, &p.Hmin, &p.Hmax, &p.BgrType,
 	)
 	if err != nil {
@@ -86,6 +92,8 @@ func scanProfile(rows *sql.Rows) (*domain.ExperimentProfile, error) {
 
 	p.Active = active == 1
 	p.Photon = photon == 1
+	p.MeasurementStartTime, _ = time.Parse(time.RFC3339, measurementStartTime)
+	p.MeasurementStopTime, _ = time.Parse(time.RFC3339, measurementStopTime)
 
 	if altitudesJSON != "" {
 		json.Unmarshal([]byte(altitudesJSON), &p.Altitudes)

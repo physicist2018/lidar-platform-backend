@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.1] — 2025-07-15
+
+### Added
+- Поля `MeasurementStartTime`, `MeasurementStopTime` в доменной сущности `ExperimentProfile` и таблице БД
+- Заполнение времён из `LicelFile.MeasurementStartTime` / `MeasurementStopTime` в `Prepare`
+
 ## [0.4.0] — 2025-07-15
 
 ### Added
