@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/lidar-platform/backend/internal/application/ports"
 	"github.com/lidar-platform/backend/internal/domain"
 )
 
@@ -50,6 +51,46 @@ func (r *ExperimentProfileRepository) FindByExperimentID(ctx context.Context, ex
 		        altitudes, data, hmin, hmax, bgr_type
 		 FROM experiment_profiles WHERE experiment_id = ?`, experimentID,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []*domain.ExperimentProfile
+	for rows.Next() {
+		p, err := scanProfile(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, rows.Err()
+}
+
+func (r *ExperimentProfileRepository) FindByParams(ctx context.Context, params ports.ExperimentProfileParams) ([]*domain.ExperimentProfile, error) {
+	query := `SELECT id, experiment_id, file_name,
+		        active, photon, laser_type, n_data_points, high_voltage,
+		        bin_width, wavelength, polarization, bin_shift, dec_bin_shift,
+		        adc_bits, n_shots, discr_level, device_id, n_crate,
+		        measurement_start_time, measurement_stop_time,
+		        altitudes, data, hmin, hmax, bgr_type
+		 FROM experiment_profiles
+		 WHERE experiment_id = ? AND wavelength = ? AND polarization = ?`
+
+	args := []any{params.ExperimentID, params.Wavelength, params.Polarization}
+
+	if params.Photon != nil {
+		query += " AND photon = ?"
+		if *params.Photon {
+			args = append(args, 1)
+		} else {
+			args = append(args, 0)
+		}
+	}
+
+	query += " ORDER BY measurement_stop_time ASC"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

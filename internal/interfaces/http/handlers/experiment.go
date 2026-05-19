@@ -170,6 +170,55 @@ func (h *ExperimentHandler) Prepare(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+func (h *ExperimentHandler) GenerateImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "missing experiment id", http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		Wavelength   float64 `json:"wavelength"`
+		Polarization string  `json:"polarization"`
+		ChannelType  string  `json:"channelType"`
+		PlotType     string  `json:"plottype"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if body.Polarization != "o" && body.Polarization != "p" && body.Polarization != "s" {
+		http.Error(w, "polarization must be 'o', 'p' or 's'", http.StatusBadRequest)
+		return
+	}
+	if body.ChannelType != "photon" && body.ChannelType != "analog" && body.ChannelType != "glued" {
+		http.Error(w, "channelType must be 'photon', 'analog' or 'glued'", http.StatusBadRequest)
+		return
+	}
+	if body.PlotType != "RangeCorrected" && body.PlotType != "LogRangeCorrected" {
+		http.Error(w, "plottype must be 'RangeCorrected' or 'LogRangeCorrected'", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.uc.GenerateImage(r.Context(), usecases.GenerateImageInput{
+		ExperimentID: id,
+		Wavelength:   body.Wavelength,
+		Polarization: body.Polarization,
+		ChannelType:  body.ChannelType,
+		PlotType:     body.PlotType,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"path": result.Path,
+	})
+}
+
 func (h *ExperimentHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {

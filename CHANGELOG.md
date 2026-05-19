@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.5.0] — 2025-07-15
+
+### Added
+- `POST /api/experiments/{id}/image` — генерация time-height map (авторизованный):
+  - JSON-параметры: `wavelength`, `polarization` (o/p/s), `channelType` (photon/analog/glued), `plottype` (RangeCorrected/LogRangeCorrected)
+  - `glued`: склейка photon/analog каналов по времени (photon < 10 МГц → photon, иначе analog)
+  - Рендер PNG 1024×768: билинейная интерполяция, jet colormap, подписи осей (время/дистанция), colorbar
+  - Сохранение в MinIO по пути `{experimentID}/imgs/time-height_{id}_{wl}_{pol}_{channelType}_{plotType}.png`
+  - Зависимость: `golang.org/x/image` (basicfont для подписей)
+- `FindByParams` в порту `ExperimentProfileRepository` — фильтрация профилей по experimentID, wavelength, polarization, photon (опционально)
+
 ## [0.4.1] — 2025-07-15
 
 ### Added

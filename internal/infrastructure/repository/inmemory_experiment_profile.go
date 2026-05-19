@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"sort"
 	"sync"
 
+	"github.com/lidar-platform/backend/internal/application/ports"
 	"github.com/lidar-platform/backend/internal/domain"
 )
 
@@ -37,6 +39,35 @@ func (r *InMemoryExperimentProfileRepository) FindByExperimentID(_ context.Conte
 		if p, ok := r.data[id]; ok {
 			result = append(result, p)
 		}
+	}
+	return result, nil
+}
+
+func (r *InMemoryExperimentProfileRepository) FindByParams(_ context.Context, params ports.ExperimentProfileParams) ([]*domain.ExperimentProfile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []*domain.ExperimentProfile
+	for _, p := range r.data {
+		if p.ExperimentID != params.ExperimentID {
+			continue
+		}
+		if p.Wavelength != params.Wavelength {
+			continue
+		}
+		if p.Polarization != params.Polarization {
+			continue
+		}
+		if params.Photon != nil && p.Photon != *params.Photon {
+			continue
+		}
+		result = append(result, p)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].MeasurementStopTime.Before(result[j].MeasurementStopTime)
+	})
+	if result == nil {
+		result = []*domain.ExperimentProfile{}
 	}
 	return result, nil
 }
