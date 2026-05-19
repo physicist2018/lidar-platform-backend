@@ -19,12 +19,13 @@ import (
 var ErrExperimentNotFound = errors.New("experiment not found")
 
 type ExperimentUseCase struct {
-	repo    ports.ExperimentRepository
-	storage ports.FileStorage
+	repo        ports.ExperimentRepository
+	profileRepo ports.ExperimentProfileRepository
+	storage     ports.FileStorage
 }
 
-func NewExperimentUseCase(repo ports.ExperimentRepository, storage ports.FileStorage) *ExperimentUseCase {
-	return &ExperimentUseCase{repo: repo, storage: storage}
+func NewExperimentUseCase(repo ports.ExperimentRepository, profileRepo ports.ExperimentProfileRepository, storage ports.FileStorage) *ExperimentUseCase {
+	return &ExperimentUseCase{repo: repo, profileRepo: profileRepo, storage: storage}
 }
 
 type CreateExperimentInput struct {
@@ -211,6 +212,182 @@ func (uc *ExperimentUseCase) GetStatus(ctx context.Context, experimentID string)
 		return nil, ErrExperimentNotFound
 	}
 	return exp, nil
+}
+
+type PrepareExperimentInput struct {
+	Hmin    float64
+	Hmax    float64
+	BgrType string  // "file" or "avgtail"
+	BgrAlt  float64 // used only when BgrType=avgtail
+}
+
+type PrepareExperimentResult struct {
+	ProfileCount int
+}
+
+func (uc *ExperimentUseCase) Prepare(ctx context.Context, experimentID string, input PrepareExperimentInput) (*PrepareExperimentResult, error) {
+	exp, err := uc.repo.FindByID(ctx, experimentID)
+	if err != nil {
+		return nil, fmt.Errorf("find experiment: %w", err)
+	}
+	if exp == nil {
+		return nil, ErrExperimentNotFound
+	}
+
+	// Download zip from MinIO to temp file
+	tmpDir, err := os.MkdirTemp("", "lidar-prepare-*")
+	if err != nil {
+		return nil, fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	zipPath := exp.ZipFilePath
+	if zipPath == "" {
+		zipPath = fmt.Sprintf("experiments/%s/data.zip", experimentID)
+	}
+
+	localZipPath := tmpDir + "/data.zip"
+	if err := uc.downloadToFile(ctx, zipPath, localZipPath); err != nil {
+		return nil, fmt.Errorf("download zip: %w", err)
+	}
+
+	// Load zip as LicelPack
+	pack := licelformat.NewLicelPackFromZip(localZipPath)
+	if pack == nil || len(pack.Data) == 0 {
+		return nil, fmt.Errorf("no licel files found in zip")
+	}
+
+	// Load bgr file if BgrType=file
+	var bgrLicelFile *licelformat.LicelFile
+	if input.BgrType == "file" {
+		bgrPath := exp.BgrFilePath
+		if bgrPath == "" {
+			bgrPath = fmt.Sprintf("experiments/%s/bgr.licel", experimentID)
+		}
+		localBgrPath := tmpDir + "/bgr.licel"
+		if err := uc.downloadToFile(ctx, bgrPath, localBgrPath); err != nil {
+			return nil, fmt.Errorf("download bgr file: %w", err)
+		}
+		lf := licelformat.LoadLicelFile(localBgrPath)
+		bgrLicelFile = &lf
+	}
+
+	// Delete existing profiles for this experiment before creating new ones
+	_ = uc.profileRepo.DeleteByExperimentID(ctx, experimentID)
+
+	profileCount := 0
+	for fileName, lf := range pack.Data {
+		for _, prof := range lf.Profiles {
+			altitudes := make([]float64, prof.NDataPoints)
+			for i := 0; i < prof.NDataPoints; i++ {
+				altitudes[i] = float64(i+prof.BinShift) * prof.BinWidth
+			}
+
+			// Compute background subtraction
+			correctedData := make([]float64, prof.NDataPoints)
+			copy(correctedData, prof.Data)
+
+			switch input.BgrType {
+			case "file":
+				if bgrLicelFile != nil {
+					bgrProf := bgrLicelFile.SelectCertainWavelength(prof.Photon, prof.Wavelength)
+					if bgrProf.Wavelength != 0 && len(bgrProf.Data) == len(prof.Data) {
+						for j := range correctedData {
+							correctedData[j] -= bgrProf.Data[j]
+						}
+					}
+				}
+			case "avgtail":
+				bg := computeTailAverage(altitudes, prof.Data, input.BgrAlt)
+				for j := range correctedData {
+					correctedData[j] -= bg
+				}
+			}
+
+			// Trim to [Hmin, Hmax]
+			trimmedAltitudes := make([]float64, 0)
+			trimmedData := make([]float64, 0)
+			for j := 0; j < prof.NDataPoints; j++ {
+				if altitudes[j] >= input.Hmin && altitudes[j] <= input.Hmax {
+					trimmedAltitudes = append(trimmedAltitudes, altitudes[j])
+					trimmedData = append(trimmedData, correctedData[j])
+				}
+			}
+
+			ep := &domain.ExperimentProfile{
+				ID:           uuid.New().String(),
+				ExperimentID: experimentID,
+				FileName:     fileName,
+				Active:       prof.Active,
+				Photon:       prof.Photon,
+				LaserType:    prof.LaserType,
+				NDataPoints:  prof.NDataPoints,
+				HighVoltage:  prof.HighVoltage,
+				BinWidth:     prof.BinWidth,
+				Wavelength:   prof.Wavelength,
+				Polarization: prof.Polarization,
+				BinShift:     prof.BinShift,
+				DecBinShift:  prof.DecBinShift,
+				AdcBits:      prof.AdcBits,
+				NShots:       prof.NShots,
+				DiscrLevel:   prof.DiscrLevel,
+				DeviceID:     prof.DeviceID,
+				NCrate:       prof.NCrate,
+				Altitudes:    trimmedAltitudes,
+				Data:         trimmedData,
+				Hmin:         input.Hmin,
+				Hmax:         input.Hmax,
+				BgrType:      input.BgrType,
+			}
+
+			if err := uc.profileRepo.Create(ctx, ep); err != nil {
+				return nil, fmt.Errorf("create profile: %w", err)
+			}
+			profileCount++
+		}
+	}
+
+	// Update experiment status
+	exp.Status = domain.StatusSuccess
+	if err := uc.repo.Update(ctx, exp); err != nil {
+		log.Printf("failed to update experiment %s status after prepare: %v", experimentID, err)
+	}
+
+	return &PrepareExperimentResult{ProfileCount: profileCount}, nil
+}
+
+func (uc *ExperimentUseCase) downloadToFile(ctx context.Context, objectPath, localPath string) error {
+	rc, _, err := uc.storage.Download(ctx, objectPath)
+	if err != nil {
+		return fmt.Errorf("minio download: %w", err)
+	}
+	defer rc.Close()
+
+	f, err := os.Create(localPath)
+	if err != nil {
+		return fmt.Errorf("create local file: %w", err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, rc); err != nil {
+		return fmt.Errorf("write local file: %w", err)
+	}
+	return nil
+}
+
+func computeTailAverage(altitudes, data []float64, bgrAlt float64) float64 {
+	var sum float64
+	var count int
+	for i, alt := range altitudes {
+		if alt >= bgrAlt {
+			sum += data[i]
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / float64(count)
 }
 
 func extractLicelTimesFromBytes(zipData []byte) (start, stop time.Time, err error) {

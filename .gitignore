@@ -10,3 +10,8 @@
 # Temp files
 *.zip
 *.051986
+
+# Utility scripts
+*.sh
+auth_user.py
+weather.txt

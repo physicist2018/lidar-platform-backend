@@ -37,8 +37,8 @@ github.com/minio/minio-go/v7 v7.1.0 h1:QEt5IStDpxgGjEdtOgpiZ5QhmSl3ax7qy61vi2SwH
 github.com/minio/minio-go/v7 v7.1.0/go.mod h1:Dm7WS1AgLmBa0NcQD6SeJnJf+K/EUW3GR7Ks6olB3OA=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
 github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
-github.com/physicist2018/licelfile v1.1.7 h1:faBOTymVVppaSTd6a1zELYfYuOA5YWZzIHnk2PKPIrU=
-github.com/physicist2018/licelfile v1.1.7/go.mod h1:TkaQp4wmArY2KZJuHAnis/Q/piLdxmgH6KHNOnH7dCY=
+github.com/physicist2018/licelfile v1.1.8 h1:LgOiIyGIS+cWyDacJBYzytPxFv3sk5nyc8kk6Yqr3f4=
+github.com/physicist2018/licelfile v1.1.8/go.mod h1:TkaQp4wmArY2KZJuHAnis/Q/piLdxmgH6KHNOnH7dCY=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

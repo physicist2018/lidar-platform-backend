@@ -35,7 +35,8 @@ func main() {
 		log.Fatalf("failed to init minio storage: %v", err)
 	}
 	expRepo := repository.NewInMemoryExperimentRepository()
-	expUseCase := usecases.NewExperimentUseCase(expRepo, minioStorage)
+	profileRepo := repository.NewInMemoryExperimentProfileRepository()
+	expUseCase := usecases.NewExperimentUseCase(expRepo, profileRepo, minioStorage)
 
 	router := chiRouter.NewRouter(authUseCase, expUseCase)
 

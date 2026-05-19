@@ -7,7 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/minio/minio-go/v7 v7.1.0
-	github.com/physicist2018/licelfile v1.1.7
+	github.com/physicist2018/licelfile v1.1.8
 	golang.org/x/crypto v0.51.0
 )
 

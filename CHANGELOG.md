@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [0.3.0] — 2025-01-20
+
+### Added
+- `POST /api/experiments/{id}/prepare` — подготовка данных эксперимента (авторизованный):
+  - Доменная сущность `ExperimentProfile` (ID, ExperimentID, FileName, метаданные канала, обработанные данные Altitudes/Data, Hmin/Hmax, BgrType)
+  - Порты: `ExperimentProfileRepository`
+  - In-memory репозиторий профилей (`InMemoryExperimentProfileRepository`)
+  - `Prepare` в `ExperimentUseCase`:
+    - Скачивает zip-архив и опциональный BgrFile из MinIO во временную папку
+    - Распаковывает zip через `licelfile.NewLicelPackFromZip`
+    - Для каждого канала каждого файла строит массив высот (`altitude[i] = (i + BinShift) * BinWidth`)
+    - Вычитает фон: `file` — поканально из загруженного BgrFile, `avgtail` — среднее значений с высоты ≥ BgrAlt
+    - Обрезает до `[Hmin, Hmax]` и сохраняет профили
+    - Предыдущие профили эксперимента удаляются при повторном вызове
+  - Multipart/form-data параметры: Hmin, Hmax (float64), BgrType ("file"|"avgtail"), BgrAlt (float64, только для avgtail)
+- Метод `Download` в порту `FileStorage` и его реализация в `MinioStorage`
+
+## [0.2.2] — 2025-01-20
+
 ### Added
 - `GET /api/experiments` — список экспериментов текущего пользователя (авторизованный)
 - `GET /api/experiments/{id}` — получение полной информации об эксперименте (авторизованный)

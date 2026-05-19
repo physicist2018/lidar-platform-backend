@@ -30,6 +30,18 @@ func NewMinioStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 	}, nil
 }
 
+func (s *MinioStorage) Download(ctx context.Context, path string) (io.ReadCloser, int64, error) {
+	obj, err := s.client.GetObject(ctx, s.bucketName, path, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, 0, fmt.Errorf("get object: %w", err)
+	}
+	stat, err := obj.Stat()
+	if err != nil {
+		return nil, 0, fmt.Errorf("stat object: %w", err)
+	}
+	return obj, stat.Size, nil
+}
+
 func (s *MinioStorage) Upload(ctx context.Context, path string, reader io.Reader, size int64, contentType string) error {
 	path = strings.TrimPrefix(path, "/")
 
