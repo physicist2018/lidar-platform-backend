@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -217,6 +219,32 @@ func (h *ExperimentHandler) GenerateImage(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(map[string]string{
 		"path": result.Path,
 	})
+}
+
+func (h *ExperimentHandler) DownloadImage(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	wavelength := chi.URLParam(r, "wavelength")
+	polarization := chi.URLParam(r, "polarization")
+	channelType := chi.URLParam(r, "channelType")
+	plotType := chi.URLParam(r, "plotType")
+
+	if id == "" || wavelength == "" || polarization == "" || channelType == "" || plotType == "" {
+		http.Error(w, "missing path parameters", http.StatusBadRequest)
+		return
+	}
+
+	rc, err := h.uc.GetImage(r.Context(), id, wavelength, polarization, channelType, plotType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	defer rc.Close()
+
+	w.Header().Set("Content-Type", "image/png")
+	w.WriteHeader(http.StatusOK)
+	if _, err := io.Copy(w, rc); err != nil {
+		log.Printf("failed to stream image: %v", err)
+	}
 }
 
 func (h *ExperimentHandler) GetStatus(w http.ResponseWriter, r *http.Request) {

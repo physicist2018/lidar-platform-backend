@@ -32,6 +32,7 @@ func NewRouter(authUseCase *usecases.AuthUseCase, expUseCase *usecases.Experimen
 		r.Get("/api/experiments/{id}/status", expHandler.GetStatus)
 		r.Post("/api/experiments/{id}/prepare", expHandler.Prepare)
 		r.Post("/api/experiments/{id}/image", expHandler.GenerateImage)
+		r.Get("/api/experiments/{id}/{wavelength}/{polarization}/{channelType}/{plotType}", expHandler.DownloadImage)
 	})
 
 	return r

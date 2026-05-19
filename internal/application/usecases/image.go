@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"math"
 	"sort"
 	"time"
@@ -41,6 +42,18 @@ const (
 	heatH         = imgHeight - marginTop - marginBottom
 	glueThreshold = 10.0
 )
+
+func (uc *ExperimentUseCase) GetImage(ctx context.Context, experimentID, wavelength, polarization, channelType, plotType string) (io.ReadCloser, error) {
+	fileName := fmt.Sprintf("time-height_%s_%s_%s_%s_%s.png",
+		experimentID, wavelength, polarization, channelType, plotType)
+	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", experimentID, fileName)
+
+	rc, _, err := uc.storage.Download(ctx, objectPath)
+	if err != nil {
+		return nil, fmt.Errorf("image not found: %w", err)
+	}
+	return rc, nil
+}
 
 func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateImageInput) (*GenerateImageResult, error) {
 	var profiles []*domain.ExperimentProfile
