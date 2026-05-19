@@ -16,7 +16,7 @@
     - Вычитает фон: `file` — поканально из загруженного BgrFile, `avgtail` — среднее значений с высоты ≥ BgrAlt
     - Обрезает до `[Hmin, Hmax]` и сохраняет профили
     - Предыдущие профили эксперимента удаляются при повторном вызове
-  - Multipart/form-data параметры: Hmin, Hmax (float64), BgrType ("file"|"avgtail"), BgrAlt (float64, только для avgtail)
+  - JSON-тело запроса: `{"Hmin": <float64>, "Hmax": <float64>, "BgrType": "file"|"avgtail", "BgrAlt": <float64>}` (BgrAlt только для avgtail)
 - Метод `Download` в порту `FileStorage` и его реализация в `MinioStorage`
 
 ## [0.2.2] — 2025-01-20
