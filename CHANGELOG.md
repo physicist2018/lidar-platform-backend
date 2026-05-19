@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.4.0] — 2025-07-15
+
+### Added
+- SQLite-адаптеры репозиториев в `internal/infrastructure/repository/sqlite/`:
+  - `UserRepository`, `ExperimentRepository`, `ExperimentProfileRepository` — имплементируют порты `ports.*` через `database/sql`
+  - `Open(dsn)` — открывает БД, включает WAL + foreign keys, выполняет `CREATE TABLE IF NOT EXISTS`
+  - Миграция схемы: таблицы `users`, `experiments`, `experiment_profiles` (индексы по FK)
+  - `[]float64` поля (`Altitudes`, `Data`) хранятся как JSON-текст — совместимо с `jsonb` в PostgreSQL
+- Поле `DatabaseDSN` в конфигурации (env `DATABASE_DSN`, дефолт `file:lidar.db?cache=shared`)
+- `migrations/001_init.sql` — документационная копия DDL
+- Зависимость: `modernc.org/sqlite` — pure-Go драйвер SQLite (без CGO)
+
+### Changed
+- `main.go`: in-memory репозитории заменены на SQLite, добавлен `defer db.Close()`
+
+### Fixed
+- `ExperimentUseCase.setStatus`: теперь read-modify-write (FindByID → Update) вместо перезаписи всей структуры (терялись Title, Comments и др.)
+
 ## [0.3.0] — 2025-01-20
 
 ### Added

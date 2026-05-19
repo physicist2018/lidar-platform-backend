@@ -171,11 +171,13 @@ func (uc *ExperimentUseCase) processUpload(experimentID string, input asyncUploa
 }
 
 func (uc *ExperimentUseCase) setStatus(ctx context.Context, experimentID string, status domain.ExperimentStatus, errMsg string) {
-	exp := &domain.Experiment{
-		ID:           experimentID,
-		Status:       status,
-		ErrorMessage: errMsg,
+	exp, err := uc.repo.FindByID(ctx, experimentID)
+	if err != nil || exp == nil {
+		log.Printf("failed to find experiment %s for status update: %v", experimentID, err)
+		return
 	}
+	exp.Status = status
+	exp.ErrorMessage = errMsg
 	if err := uc.repo.Update(ctx, exp); err != nil {
 		log.Printf("failed to update experiment %s status to %s: %v", experimentID, status, err)
 	}

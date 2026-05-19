@@ -7,6 +7,11 @@
 *.swp
 *.swo
 
+# SQLite database
+*.db
+*.db-shm
+*.db-wal
+
 # Temp files
 *.zip
 *.051986

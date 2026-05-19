@@ -15,6 +15,7 @@ type Config struct {
 	MaxHeaderBytes int
 	JWTSecret      string
 	JWTExpiry      time.Duration
+	DatabaseDSN    string
 	MinioEndpoint  string
 	MinioAccessKey string
 	MinioSecretKey string
@@ -41,6 +42,7 @@ func Load() (*Config, error) {
 		MaxHeaderBytes: intEnv("MAX_HEADER_BYTES", 1<<20), // 1MB
 		JWTSecret:      jwtSecret,
 		JWTExpiry:      parseDuration(envOrDefault("JWT_EXPIRY", "24h"), 24*time.Hour),
+		DatabaseDSN:    envOrDefault("DATABASE_DSN", "file:lidar.db?cache=shared"),
 		MinioEndpoint:  envOrDefault("MINIO_ENDPOINT", "localhost:9000"),
 		MinioAccessKey: envOrDefault("MINIO_ACCESS_KEY", "minioadmin"),
 		MinioSecretKey: envOrDefault("MINIO_SECRET_KEY", "minioadmin"),

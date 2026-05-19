@@ -12,7 +12,7 @@ import (
 	"github.com/lidar-platform/backend/internal/application/usecases"
 	"github.com/lidar-platform/backend/internal/infrastructure/auth"
 	"github.com/lidar-platform/backend/internal/infrastructure/config"
-	"github.com/lidar-platform/backend/internal/infrastructure/repository"
+	repo "github.com/lidar-platform/backend/internal/infrastructure/repository/sqlite"
 	"github.com/lidar-platform/backend/internal/infrastructure/storage"
 	chiRouter "github.com/lidar-platform/backend/internal/interfaces/http"
 )
@@ -23,8 +23,14 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	db, err := repo.Open(cfg.DatabaseDSN)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
 	// Auth
-	userRepo := repository.NewInMemoryUserRepository()
+	userRepo := repo.NewUserRepository(db)
 	bcryptHasher := auth.NewBcryptHasher(0)
 	jwtProvider := auth.NewJWTProvider(cfg.JWTSecret, cfg.JWTExpiry)
 	authUseCase := usecases.NewAuthUseCase(userRepo, bcryptHasher, jwtProvider)
@@ -34,8 +40,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to init minio storage: %v", err)
 	}
-	expRepo := repository.NewInMemoryExperimentRepository()
-	profileRepo := repository.NewInMemoryExperimentProfileRepository()
+	expRepo := repo.NewExperimentRepository(db)
+	profileRepo := repo.NewExperimentProfileRepository(db)
 	expUseCase := usecases.NewExperimentUseCase(expRepo, profileRepo, minioStorage)
 
 	router := chiRouter.NewRouter(authUseCase, expUseCase)
