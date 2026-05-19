@@ -35,6 +35,18 @@ func (r *InMemoryExperimentRepository) FindByID(_ context.Context, id string) (*
 	return exp, nil
 }
 
+func (r *InMemoryExperimentRepository) FindByUserID(_ context.Context, userID string) ([]*domain.Experiment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []*domain.Experiment
+	for _, exp := range r.experiments {
+		if exp.UserID == userID {
+			result = append(result, exp)
+		}
+	}
+	return result, nil
+}
+
 func (r *InMemoryExperimentRepository) Update(_ context.Context, exp *domain.Experiment) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

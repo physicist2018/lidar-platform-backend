@@ -85,6 +85,44 @@ func (h *ExperimentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *ExperimentHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "missing experiment id", http.StatusBadRequest)
+		return
+	}
+
+	exp, err := h.uc.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, usecases.ErrExperimentNotFound) {
+			http.Error(w, "experiment not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(exp)
+}
+
+func (h *ExperimentHandler) List(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	exps, err := h.uc.ListByUser(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(exps)
+}
+
 func (h *ExperimentHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {

@@ -6,3 +6,7 @@
 .vscode/
 *.swp
 *.swo
+
+# Temp files
+*.zip
+*.051986

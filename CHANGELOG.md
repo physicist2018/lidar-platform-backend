@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+- `GET /api/experiments` — список экспериментов текущего пользователя (авторизованный)
+- `GET /api/experiments/{id}` — получение полной информации об эксперименте (авторизованный)
+- `FindByUserID` в интерфейсе `ExperimentRepository` и его in-memory реализация
+- `GetByID` и `ListByUser` в `ExperimentUseCase`
+
+## [0.2.1] — 2025-01-20
+
 ### Changed
 - Загрузка эксперимента теперь асинхронная: `POST /api/experiments` возвращает `201` мгновенно, не дожидаясь завершения
 - Статус загрузки отслеживается в поле `Status` модели `Experiment`: `started` → `uploading` → `success` / `failed`

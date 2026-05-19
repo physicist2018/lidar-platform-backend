@@ -9,5 +9,6 @@ import (
 type ExperimentRepository interface {
 	Create(ctx context.Context, exp *domain.Experiment) error
 	FindByID(ctx context.Context, id string) (*domain.Experiment, error)
+	FindByUserID(ctx context.Context, userID string) ([]*domain.Experiment, error)
 	Update(ctx context.Context, exp *domain.Experiment) error
 }

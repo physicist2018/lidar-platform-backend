@@ -27,6 +27,8 @@ func NewRouter(authUseCase *usecases.AuthUseCase, expUseCase *usecases.Experimen
 	r.Group(func(r chi.Router) {
 		r.Use(authMw.AuthMiddleware(authUseCase))
 		r.Post("/api/experiments", expHandler.Create)
+		r.Get("/api/experiments", expHandler.List)
+		r.Get("/api/experiments/{id}", expHandler.GetByID)
 		r.Get("/api/experiments/{id}/status", expHandler.GetStatus)
 	})
 

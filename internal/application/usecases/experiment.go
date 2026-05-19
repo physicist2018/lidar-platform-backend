@@ -180,6 +180,28 @@ func (uc *ExperimentUseCase) setStatus(ctx context.Context, experimentID string,
 	}
 }
 
+func (uc *ExperimentUseCase) GetByID(ctx context.Context, experimentID string) (*domain.Experiment, error) {
+	exp, err := uc.repo.FindByID(ctx, experimentID)
+	if err != nil {
+		return nil, fmt.Errorf("find experiment: %w", err)
+	}
+	if exp == nil {
+		return nil, ErrExperimentNotFound
+	}
+	return exp, nil
+}
+
+func (uc *ExperimentUseCase) ListByUser(ctx context.Context, userID string) ([]*domain.Experiment, error) {
+	exps, err := uc.repo.FindByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list experiments: %w", err)
+	}
+	if exps == nil {
+		exps = []*domain.Experiment{}
+	}
+	return exps, nil
+}
+
 func (uc *ExperimentUseCase) GetStatus(ctx context.Context, experimentID string) (*domain.Experiment, error) {
 	exp, err := uc.repo.FindByID(ctx, experimentID)
 	if err != nil {
