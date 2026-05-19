@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 	return &Config{
 		ServerAddr:     fmt.Sprintf("%s:%s", host, port),
 		ReadTimeout:    parseDuration(envOrDefault("READ_TIMEOUT", "10s"), 10*time.Second),
-		WriteTimeout:   parseDuration(envOrDefault("WRITE_TIMEOUT", "15s"), 15*time.Second),
+		WriteTimeout:   parseDuration(envOrDefault("WRITE_TIMEOUT", "60s"), 60*time.Second),
 		IdleTimeout:    parseDuration(envOrDefault("IDLE_TIMEOUT", "60s"), 60*time.Second),
 		MaxHeaderBytes: intEnv("MAX_HEADER_BYTES", 1<<20), // 1MB
 		JWTSecret:      jwtSecret,
