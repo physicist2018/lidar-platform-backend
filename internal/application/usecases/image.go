@@ -117,7 +117,7 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 	fileName := fmt.Sprintf("time-height_%s_%.1f_%s_%s_%s.png",
 		input.ExperimentID, input.Wavelength, input.Polarization,
 		input.ChannelType, input.PlotType)
-	objectPath := fmt.Sprintf("%s/imgs/%s", input.ExperimentID, fileName)
+	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
 
 	if err := uc.storage.Upload(ctx, objectPath, bytes.NewReader(pngBytes), int64(len(pngBytes)), "image/png"); err != nil {
 		return nil, fmt.Errorf("upload image: %w", err)
