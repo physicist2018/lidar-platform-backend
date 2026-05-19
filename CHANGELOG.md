@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Загрузка эксперимента теперь асинхронная: `POST /api/experiments` возвращает `201` мгновенно, не дожидаясь завершения
+- Статус загрузки отслеживается в поле `Status` модели `Experiment`: `started` → `uploading` → `success` / `failed`
+- При ошибке поле `ErrorMessage` содержит причину сбоя
+
+### Added
+- `GET /api/experiments/{id}/status` — эндпоинт проверки статуса загрузки (авторизованный)
+- Метод `Update` в интерфейсе `ExperimentRepository` и его in-memory реализация
+- `ErrExperimentNotFound` — ошибка «эксперимент не найден» в `ExperimentUseCase.GetStatus`
+
 ## [0.2.0] — 2025-01-20
 
 ### Added

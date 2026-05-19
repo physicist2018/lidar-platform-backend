@@ -34,3 +34,13 @@ func (r *InMemoryExperimentRepository) FindByID(_ context.Context, id string) (*
 	}
 	return exp, nil
 }
+
+func (r *InMemoryExperimentRepository) Update(_ context.Context, exp *domain.Experiment) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.experiments[exp.ID]; !ok {
+		return nil
+	}
+	r.experiments[exp.ID] = exp
+	return nil
+}

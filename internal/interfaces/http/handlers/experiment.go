@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/lidar-platform/backend/internal/application/usecases"
 	"github.com/lidar-platform/backend/internal/interfaces/http/middleware"
 )
@@ -35,21 +37,18 @@ func (h *ExperimentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ZipFile — required
-	zipFile, zipHeader, err := r.FormFile("ZipFile")
+	zipFile, _, err := r.FormFile("ZipFile")
 	if err != nil {
 		http.Error(w, "ZipFile is required", http.StatusBadRequest)
 		return
 	}
 	defer zipFile.Close()
 
-	// BgrFile — optional
 	bgrFile, bgrHeader, _ := r.FormFile("BgrFile")
 	if bgrFile != nil {
 		defer bgrFile.Close()
 	}
 
-	// MeteoFile — optional
 	meteoFile, meteoHeader, _ := r.FormFile("MeteoFile")
 	if meteoFile != nil {
 		defer meteoFile.Close()
@@ -60,7 +59,6 @@ func (h *ExperimentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Title:    title,
 		Comments: comments,
 		ZipFile:  zipFile,
-		ZipSize:  zipHeader.Size,
 	}
 
 	if bgrFile != nil {
@@ -82,6 +80,32 @@ func (h *ExperimentHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
-		"id": id,
+		"id":     id,
+		"status": "started",
+	})
+}
+
+func (h *ExperimentHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "missing experiment id", http.StatusBadRequest)
+		return
+	}
+
+	exp, err := h.uc.GetStatus(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, usecases.ErrExperimentNotFound) {
+			http.Error(w, "experiment not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"id":     exp.ID,
+		"status": string(exp.Status),
+		"error":  exp.ErrorMessage,
 	})
 }
