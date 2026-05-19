@@ -27,7 +27,7 @@ func (r *ExperimentProfileRepository) Create(ctx context.Context, p *domain.Expe
 			bin_width, wavelength, polarization, bin_shift, dec_bin_shift,
 			adc_bits, n_shots, discr_level, device_id, n_crate,
 			altitudes, data, hmin, hmax, bgr_type
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.ID, p.ExperimentID, p.FileName,
 		boolToInt(p.Active), boolToInt(p.Photon), p.LaserType, p.NDataPoints, p.HighVoltage,
 		p.BinWidth, p.Wavelength, p.Polarization, p.BinShift, p.DecBinShift,
