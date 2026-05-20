@@ -68,11 +68,7 @@ func (uc *ExperimentUseCase) GetImage(ctx context.Context, experimentID, wavelen
 		return nil, ErrImageNotGenerated
 	}
 
-	fileName := fmt.Sprintf("time-height_%s_%s_%s_%s_%s.png",
-		experimentID, wavelength, polarization, channelType, plotType)
-	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", experimentID, fileName)
-
-	rc, _, err := uc.storage.Download(ctx, objectPath)
+	rc, _, err := uc.storage.Download(ctx, img.ObjectPath)
 	if err != nil {
 		return nil, fmt.Errorf("image not found in storage: %w", err)
 	}
@@ -151,8 +147,8 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 		return nil, fmt.Errorf("render heatmap: %w", err)
 	}
 
-	fileName := fmt.Sprintf("time-height_%s_%.1f_%s_%s_%s.png",
-		input.ExperimentID, input.Wavelength, input.Polarization,
+	fileName := fmt.Sprintf("time-height_%.1f_%s_%s_%s.png",
+		input.Wavelength, input.Polarization,
 		input.ChannelType, input.PlotType)
 	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
 
