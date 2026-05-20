@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Changed
+- `gluePairs`: новый алгоритм склейки photon/analog профилей:
+  - Коэффициент `k = mean(Photon/Analog)` вычисляется по непрерывному участку высот, где `Photon ∈ [1;10]` MHz и длина ≥ 20 точек; fallback — диапазон высот 5-7 км
+  - `Photon > 10 MHz` → `k * Analog` (при `k==0` → `Analog`)
+  - `Photon < 1 MHz` → `Photon`
+  - `1 ≤ Photon ≤ 10 MHz` → `(Photon + k*Analog) / 2`
 - `GetImage`: путь к изображению в MinIO берётся из записи `generated_images.ObjectPath` вместо ручной сборки (устойчивость к изменению формата имени файла)
 
 ## [0.6.0] — 2025-07-15
