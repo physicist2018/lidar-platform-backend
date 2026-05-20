@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.6.0] — 2025-07-15
+
+### Added
+- Таблица `generated_images` в БД (id, experiment_id, file_name, object_path, wavelength, polarization, channel_type, plot_type, created_at) и миграция
+- Доменная сущность `GeneratedImage`
+- Порт `GeneratedImageRepository` с методами `Create`, `FindByParams`
+- SQLite-адаптер `GeneratedImageRepository` в `internal/infrastructure/repository/sqlite/`
+- In-memory-адаптер `InMemoryGeneratedImageRepository` в `internal/infrastructure/repository/`
+
+### Changed
+- `GenerateImage`: после загрузки PNG в MinIO сохраняет запись в `generated_images`
+- `GetImage`: перед доступом к MinIO проверяет наличие записи в `generated_images`; если нет — возвращает `ErrImageNotGenerated` (404)
+- `DownloadImage` хендлер: различает `ErrImageNotGenerated` и прочие ошибки
+- `ExperimentUseCase`: добавлено поле `generatedImage`, обновлён конструктор и `main.go`
+
 ## [0.5.0] — 2025-07-15
 
 ### Added

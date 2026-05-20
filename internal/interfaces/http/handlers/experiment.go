@@ -235,6 +235,10 @@ func (h *ExperimentHandler) DownloadImage(w http.ResponseWriter, r *http.Request
 
 	rc, err := h.uc.GetImage(r.Context(), id, wavelength, polarization, channelType, plotType)
 	if err != nil {
+		if errors.Is(err, usecases.ErrImageNotGenerated) {
+			http.Error(w, "image not generated", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}

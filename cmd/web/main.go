@@ -42,7 +42,8 @@ func main() {
 	}
 	expRepo := repo.NewExperimentRepository(db)
 	profileRepo := repo.NewExperimentProfileRepository(db)
-	expUseCase := usecases.NewExperimentUseCase(expRepo, profileRepo, minioStorage)
+	generatedImageRepo := repo.NewGeneratedImageRepository(db)
+	expUseCase := usecases.NewExperimentUseCase(expRepo, profileRepo, generatedImageRepo, minioStorage)
 
 	router := chiRouter.NewRouter(authUseCase, expUseCase)
 

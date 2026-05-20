@@ -51,3 +51,17 @@ CREATE TABLE IF NOT EXISTS experiment_profiles (
 );
 
 CREATE INDEX IF NOT EXISTS idx_experiment_profiles_experiment_id ON experiment_profiles(experiment_id);
+
+CREATE TABLE IF NOT EXISTS generated_images (
+    id TEXT PRIMARY KEY,
+    experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    object_path TEXT NOT NULL,
+    wavelength REAL NOT NULL,
+    polarization TEXT NOT NULL,
+    channel_type TEXT NOT NULL,
+    plot_type TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_generated_images_experiment_id ON generated_images(experiment_id);

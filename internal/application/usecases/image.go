@@ -3,6 +3,7 @@ package usecases
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -10,8 +11,10 @@ import (
 	"io"
 	"math"
 	"sort"
+	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lidar-platform/backend/internal/application/ports"
 	"github.com/lidar-platform/backend/internal/domain"
 	"golang.org/x/image/font"
@@ -43,14 +46,35 @@ const (
 	glueThreshold = 10.0
 )
 
+var ErrImageNotGenerated = errors.New("image not generated")
+
 func (uc *ExperimentUseCase) GetImage(ctx context.Context, experimentID, wavelength, polarization, channelType, plotType string) (io.ReadCloser, error) {
+	wavelengthFloat, err := strconv.ParseFloat(wavelength, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid wavelength: %w", err)
+	}
+
+	img, err := uc.generatedImage.FindByParams(ctx, ports.GeneratedImageParams{
+		ExperimentID: experimentID,
+		Wavelength:   wavelengthFloat,
+		Polarization: polarization,
+		ChannelType:  channelType,
+		PlotType:     plotType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("find generated image: %w", err)
+	}
+	if img == nil {
+		return nil, ErrImageNotGenerated
+	}
+
 	fileName := fmt.Sprintf("time-height_%s_%s_%s_%s_%s.png",
 		experimentID, wavelength, polarization, channelType, plotType)
 	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", experimentID, fileName)
 
 	rc, _, err := uc.storage.Download(ctx, objectPath)
 	if err != nil {
-		return nil, fmt.Errorf("image not found: %w", err)
+		return nil, fmt.Errorf("image not found in storage: %w", err)
 	}
 	return rc, nil
 }
@@ -134,6 +158,21 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 
 	if err := uc.storage.Upload(ctx, objectPath, bytes.NewReader(pngBytes), int64(len(pngBytes)), "image/png"); err != nil {
 		return nil, fmt.Errorf("upload image: %w", err)
+	}
+
+	generatedImg := &domain.GeneratedImage{
+		ID:           uuid.New().String(),
+		ExperimentID: input.ExperimentID,
+		FileName:     fileName,
+		ObjectPath:   objectPath,
+		Wavelength:   input.Wavelength,
+		Polarization: input.Polarization,
+		ChannelType:  input.ChannelType,
+		PlotType:     input.PlotType,
+		CreatedAt:    time.Now(),
+	}
+	if err := uc.generatedImage.Create(ctx, generatedImg); err != nil {
+		return nil, fmt.Errorf("save generated image: %w", err)
 	}
 
 	return &GenerateImageResult{Path: objectPath}, nil

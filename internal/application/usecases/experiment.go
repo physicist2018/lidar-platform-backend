@@ -19,13 +19,24 @@ import (
 var ErrExperimentNotFound = errors.New("experiment not found")
 
 type ExperimentUseCase struct {
-	repo        ports.ExperimentRepository
-	profileRepo ports.ExperimentProfileRepository
-	storage     ports.FileStorage
+	repo           ports.ExperimentRepository
+	profileRepo    ports.ExperimentProfileRepository
+	generatedImage ports.GeneratedImageRepository
+	storage        ports.FileStorage
 }
 
-func NewExperimentUseCase(repo ports.ExperimentRepository, profileRepo ports.ExperimentProfileRepository, storage ports.FileStorage) *ExperimentUseCase {
-	return &ExperimentUseCase{repo: repo, profileRepo: profileRepo, storage: storage}
+func NewExperimentUseCase(
+	repo ports.ExperimentRepository,
+	profileRepo ports.ExperimentProfileRepository,
+	generatedImage ports.GeneratedImageRepository,
+	storage ports.FileStorage,
+) *ExperimentUseCase {
+	return &ExperimentUseCase{
+		repo:           repo,
+		profileRepo:    profileRepo,
+		generatedImage: generatedImage,
+		storage:        storage,
+	}
 }
 
 type CreateExperimentInput struct {
