@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- `GET /api/experiments/{id}/profiles` — список профилей эксперимента (облегчённый, без массивов `Data`/`Altitudes`): поля id, measurementStartTime, measurementStopTime, active, photon, wavelength, polarization, hmin, hmax, bgrType
+
 ### Changed
 - `gluePairs`: новый алгоритм склейки photon/analog профилей:
   - Коэффициент `k = mean(Photon/Analog)` вычисляется по непрерывному участку высот, где `Photon ∈ [1;10]` MHz и длина ≥ 20 точек; fallback — диапазон высот 5-7 км

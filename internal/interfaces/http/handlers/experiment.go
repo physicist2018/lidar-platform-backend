@@ -251,6 +251,27 @@ func (h *ExperimentHandler) DownloadImage(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (h *ExperimentHandler) ListProfiles(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "missing experiment id", http.StatusBadRequest)
+		return
+	}
+
+	profiles, err := h.uc.ListProfiles(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, usecases.ErrExperimentNotFound) {
+			http.Error(w, "experiment not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profiles)
+}
+
 func (h *ExperimentHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {

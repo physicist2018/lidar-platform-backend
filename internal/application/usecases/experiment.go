@@ -216,6 +216,51 @@ func (uc *ExperimentUseCase) ListByUser(ctx context.Context, userID string) ([]*
 	return exps, nil
 }
 
+type ProfileListItem struct {
+	ID                   string    `json:"id"`
+	MeasurementStartTime time.Time `json:"measurementStartTime"`
+	MeasurementStopTime  time.Time `json:"measurementStopTime"`
+	Active               bool      `json:"active"`
+	Photon               bool      `json:"photon"`
+	Wavelength           float64   `json:"wavelength"`
+	Polarization         string    `json:"polarization"`
+	Hmin                 float64   `json:"hmin"`
+	Hmax                 float64   `json:"hmax"`
+	BgrType              string    `json:"bgrType"`
+}
+
+func (uc *ExperimentUseCase) ListProfiles(ctx context.Context, experimentID string) ([]ProfileListItem, error) {
+	exp, err := uc.repo.FindByID(ctx, experimentID)
+	if err != nil {
+		return nil, fmt.Errorf("find experiment: %w", err)
+	}
+	if exp == nil {
+		return nil, ErrExperimentNotFound
+	}
+
+	profiles, err := uc.profileRepo.FindByExperimentID(ctx, experimentID)
+	if err != nil {
+		return nil, fmt.Errorf("find profiles: %w", err)
+	}
+
+	result := make([]ProfileListItem, 0, len(profiles))
+	for _, p := range profiles {
+		result = append(result, ProfileListItem{
+			ID:                   p.ID,
+			MeasurementStartTime: p.MeasurementStartTime,
+			MeasurementStopTime:  p.MeasurementStopTime,
+			Active:               p.Active,
+			Photon:               p.Photon,
+			Wavelength:           p.Wavelength,
+			Polarization:         p.Polarization,
+			Hmin:                 p.Hmin,
+			Hmax:                 p.Hmax,
+			BgrType:              p.BgrType,
+		})
+	}
+	return result, nil
+}
+
 func (uc *ExperimentUseCase) GetStatus(ctx context.Context, experimentID string) (*domain.Experiment, error) {
 	exp, err := uc.repo.FindByID(ctx, experimentID)
 	if err != nil {
