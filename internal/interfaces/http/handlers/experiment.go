@@ -184,6 +184,8 @@ func (h *ExperimentHandler) GenerateImage(w http.ResponseWriter, r *http.Request
 		Polarization string  `json:"polarization"`
 		ChannelType  string  `json:"channelType"`
 		PlotType     string  `json:"plottype"`
+		GlueHmin     float64 `json:"glueHmin"`
+		GlueHmax     float64 `json:"glueHmax"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -198,8 +200,13 @@ func (h *ExperimentHandler) GenerateImage(w http.ResponseWriter, r *http.Request
 		http.Error(w, "channelType must be 'photon', 'analog' or 'glued'", http.StatusBadRequest)
 		return
 	}
-	if body.PlotType != "RangeCorrected" && body.PlotType != "LogRangeCorrected" {
-		http.Error(w, "plottype must be 'RangeCorrected' or 'LogRangeCorrected'", http.StatusBadRequest)
+	if body.PlotType != "Raw" && body.PlotType != "RangeCorrected" && body.PlotType != "LogRangeCorrected" {
+		http.Error(w, "plottype must be 'Raw', 'RangeCorrected' or 'LogRangeCorrected'", http.StatusBadRequest)
+		return
+	}
+
+	if (body.GlueHmin != 0 || body.GlueHmax != 0) && body.ChannelType != "glued" {
+		http.Error(w, "glueHmin/glueHmax require channelType=glued", http.StatusBadRequest)
 		return
 	}
 
@@ -209,6 +216,8 @@ func (h *ExperimentHandler) GenerateImage(w http.ResponseWriter, r *http.Request
 		Polarization: body.Polarization,
 		ChannelType:  body.ChannelType,
 		PlotType:     body.PlotType,
+		GlueHmin:     body.GlueHmin,
+		GlueHmax:     body.GlueHmax,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

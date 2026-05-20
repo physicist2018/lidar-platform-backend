@@ -296,7 +296,9 @@ Authorization: Bearer <token>
   "wavelength": 532.0,
   "polarization": "o",
   "channelType": "glued",
-  "plottype": "RangeCorrected"
+  "plottype": "RangeCorrected",
+  "glueHmin": 3000,
+  "glueHmax": 5000
 }
 ```
 
@@ -305,7 +307,9 @@ Authorization: Bearer <token>
 | `wavelength` | float64 | да | Любая длина волны из данных |
 | `polarization` | string | да | `o`, `p`, `s` |
 | `channelType` | string | да | `photon`, `analog`, `glued` |
-| `plottype` | string | да | `RangeCorrected`, `LogRangeCorrected` |
+| `plottype` | string | да | `Raw`, `RangeCorrected`, `LogRangeCorrected` |
+| `glueHmin` | float64 | нет | Нижняя граница интервала склейки (только с `channelType=glued`) |
+| `glueHmax` | float64 | нет | Верхняя граница интервала склейки (только с `channelType=glued`) |
 
 **Каналы:**
 
@@ -315,13 +319,29 @@ Authorization: Bearer <token>
 | `analog` | Только аналоговый канал |
 | `glued` | Склейка photon + analog по алгоритму ниже |
 
-**Алгоритм склейки `glued`:**
+**Типы графиков (`plottype`):**
+
+| `plottype` | Описание |
+|-----------|----------|
+| `Raw` | Сырой сигнал без трансформации |
+| `RangeCorrected` | Сигнал × altitude² (коррекция на дальность) |
+| `LogRangeCorrected` | `log₁₀(RangeCorrected)` |
+
+**Алгоритм склейки `glued` (без `glueHmin`/`glueHmax`):**
 
 1. Вычисляется коэффициент `k = mean(Photon / Analog)` по непрерывному участку высот, где счёт фотонов в диапазоне 1–10 MHz и длина участка ≥ 20 точек. Если такого участка нет — fallback на диапазон высот 5–7 км.
 2. Результирующий сигнал для каждой точки:
    - `Photon > 10 MHz` → `k * Analog` (если `k = 0`, то `Analog`)
    - `Photon < 1 MHz` → `Photon`
    - `1 ≤ Photon ≤ 10 MHz` → `(Photon + k*Analog) / 2`
+
+**Алгоритм склейки с `glueHmin`/`glueHmax`:**
+
+1. Коэффициент `k = mean(Photon / Analog)` вычисляется по точкам в интервале высот `[glueHmin, glueHmax]`.
+2. Результирующий сигнал для каждой точки:
+   - `altitude > glueHmax` → `k * Analog` (если `k = 0`, то `Analog`)
+   - `altitude < glueHmin` → `Photon`
+   - `glueHmin ≤ altitude ≤ glueHmax` → `(Photon + k*Analog) / 2`
 
 **Ответ `200 OK`:**
 
@@ -335,7 +355,7 @@ Authorization: Bearer <token>
 
 | Код | Причина |
 |-----|---------|
-| 400 | Некорректные значения `polarization`/`channelType`/`plottype` |
+| 400 | Некорректные значения `polarization`/`channelType`/`plottype`, или `glueHmin`/`glueHmax` указаны без `channelType=glued` |
 | 500 | Ошибка генерации (например, нет профилей) |
 
 ---

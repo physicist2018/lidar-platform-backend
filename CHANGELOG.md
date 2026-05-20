@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- `plottype="Raw"` в `POST /api/experiments/{id}/image` — возвращает сырой сигнал без `RangeCorrected`/`LogRangeCorrected` трансформации
+- Параметры `glueHmin`, `glueHmax` (float64, опциональны) в теле запроса `POST /api/experiments/{id}/image`: задают пользовательский диапазон высот для склейки photon/analog (только с `channelType=glued`)
+  - Коэффициент `k` вычисляется по точкам в интервале `[glueHmin, glueHmax]`
+  - Выше `glueHmax` → `k*Analog`, ниже `glueHmin` → `Photon`, внутри → среднее
+  - Если не указаны — действует прежний алгоритм (1-10 MHz → fallback 5-7 км)
 - `GET /api/experiments/{id}/profiles` — список профилей эксперимента (облегчённый, без массивов `Data`/`Altitudes`): поля id, measurementStartTime, measurementStopTime, active, photon, wavelength, polarization, hmin, hmax, bgrType
 
 ### Changed

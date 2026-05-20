@@ -27,7 +27,9 @@ type GenerateImageInput struct {
 	Wavelength   float64
 	Polarization string
 	ChannelType  string // "photon", "analog", "glued"
-	PlotType     string // "RangeCorrected", "LogRangeCorrected"
+	PlotType     string // "Raw", "RangeCorrected", "LogRangeCorrected"
+	GlueHmin     float64
+	GlueHmax     float64
 }
 
 type GenerateImageResult struct {
@@ -129,7 +131,7 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 		if err != nil {
 			return nil, fmt.Errorf("find analog profiles: %w", err)
 		}
-		profiles = gluePairs(photonList, analogList)
+		profiles = gluePairs(photonList, analogList, input.GlueHmin, input.GlueHmax)
 	}
 
 	if len(profiles) == 0 {
@@ -179,20 +181,23 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 	return &GenerateImageResult{Path: objectPath}, nil
 }
 
-func computeGlueCoefficient(photon, analog *domain.ExperimentProfile) float64 {
+func computeGlueCoefficient(photon, analog *domain.ExperimentProfile, glueHmin, glueHmax float64) float64 {
 	n := len(photon.Data)
 	if len(analog.Data) < n {
 		n = len(analog.Data)
 	}
 
-	// 1. Ищем непрерывный участок с glueLower <= Photon <= glueUpper, длиной >= glueMinPts
-	indices := findGlueRegion(photon.Data[:n], photon.Altitudes[:n])
+	var indices []int
+	if glueHmin != 0 || glueHmax != 0 {
+		indices = findGlueRegionByAltitudes(photon.Altitudes[:n], glueHmin, glueHmax)
+	} else {
+		indices = findGlueRegion(photon.Data[:n], photon.Altitudes[:n])
+	}
 
 	if len(indices) == 0 {
 		return 0
 	}
 
-	// 2. Вычисляем k = среднее(Photon / Analog)
 	var sumRatio float64
 	count := 0
 	for _, i := range indices {
@@ -245,7 +250,17 @@ func findGlueRegion(data, altitudes []float64) []int {
 	return fallback
 }
 
-func gluePairs(photonList, analogList []*domain.ExperimentProfile) []*domain.ExperimentProfile {
+func findGlueRegionByAltitudes(altitudes []float64, hmin, hmax float64) []int {
+	var indices []int
+	for i, alt := range altitudes {
+		if alt >= hmin && alt <= hmax {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
+func gluePairs(photonList, analogList []*domain.ExperimentProfile, glueHmin, glueHmax float64) []*domain.ExperimentProfile {
 	photonByTime := make(map[int64]*domain.ExperimentProfile)
 	analogByTime := make(map[int64]*domain.ExperimentProfile)
 	for _, p := range photonList {
@@ -277,21 +292,42 @@ func gluePairs(photonList, analogList []*domain.ExperimentProfile) []*domain.Exp
 			BgrType:              photon.BgrType,
 			NDataPoints:          photon.NDataPoints,
 		}
-		k := computeGlueCoefficient(photon, analog)
-		for i := range photon.Data {
-			pVal := photon.Data[i]
-			aVal := analog.Data[i]
-			switch {
-			case pVal > glueUpper:
-				if k == 0 {
-					g.Data[i] = aVal
-				} else {
-					g.Data[i] = k * aVal
+		k := computeGlueCoefficient(photon, analog, glueHmin, glueHmax)
+		if glueHmin != 0 || glueHmax != 0 {
+			// User-specified interval: glue based on altitude range
+			for i := range photon.Data {
+				pVal := photon.Data[i]
+				aVal := analog.Data[i]
+				alt := photon.Altitudes[i]
+				switch {
+				case alt > glueHmax:
+					if k == 0 {
+						g.Data[i] = aVal
+					} else {
+						g.Data[i] = k * aVal
+					}
+				case alt < glueHmin:
+					g.Data[i] = pVal
+				default:
+					g.Data[i] = (pVal + k*aVal) / 2.0
 				}
-			case pVal < glueLower:
-				g.Data[i] = pVal
-			default:
-				g.Data[i] = (pVal + k*aVal) / 2.0
+			}
+		} else {
+			for i := range photon.Data {
+				pVal := photon.Data[i]
+				aVal := analog.Data[i]
+				switch {
+				case pVal > glueUpper:
+					if k == 0 {
+						g.Data[i] = aVal
+					} else {
+						g.Data[i] = k * aVal
+					}
+				case pVal < glueLower:
+					g.Data[i] = pVal
+				default:
+					g.Data[i] = (pVal + k*aVal) / 2.0
+				}
 			}
 		}
 		glued = append(glued, g)
@@ -334,12 +370,15 @@ func buildDataMatrix(profiles []*domain.ExperimentProfile, altitudes []float64, 
 	nTimes := len(profiles)
 	nAlts := len(altitudes)
 	matrix := make([][]float64, nTimes)
+
 	for t := 0; t < nTimes; t++ {
 		matrix[t] = make([]float64, nAlts)
 		for a := 0; a < nAlts; a++ {
 			alt := altitudes[a]
 			val := interpolateProfile(profiles[t], alt)
 			switch plotType {
+			case "Raw":
+				// no transformation
 			case "RangeCorrected":
 				val = val * alt * alt
 			case "LogRangeCorrected":
