@@ -308,8 +308,8 @@ Authorization: Bearer <token>
 | `polarization` | string | да | `o`, `p`, `s` |
 | `channelType` | string | да | `photon`, `analog`, `glued` |
 | `plottype` | string | да | `Raw`, `RangeCorrected`, `LogRangeCorrected` |
-| `glueHmin` | float64 | нет | Нижняя граница интервала склейки (только с `channelType=glued`) |
-| `glueHmax` | float64 | нет | Верхняя граница интервала склейки (только с `channelType=glued`) |
+| `glueHmin` | float64 | да (при `channelType=glued`) | Нижняя граница интервала склейки |
+| `glueHmax` | float64 | да (при `channelType=glued`) | Верхняя граница интервала склейки |
 
 **Каналы:**
 
@@ -327,15 +327,7 @@ Authorization: Bearer <token>
 | `RangeCorrected` | Сигнал × altitude² (коррекция на дальность) |
 | `LogRangeCorrected` | `log₁₀(RangeCorrected)` |
 
-**Алгоритм склейки `glued` (без `glueHmin`/`glueHmax`):**
-
-1. Вычисляется коэффициент `k = mean(Photon / Analog)` по непрерывному участку высот, где счёт фотонов в диапазоне 1–10 MHz и длина участка ≥ 20 точек. Если такого участка нет — fallback на диапазон высот 5–7 км.
-2. Результирующий сигнал для каждой точки:
-   - `Photon > 10 MHz` → `k * Analog` (если `k = 0`, то `Analog`)
-   - `Photon < 1 MHz` → `Photon`
-   - `1 ≤ Photon ≤ 10 MHz` → `(Photon + k*Analog) / 2`
-
-**Алгоритм склейки с `glueHmin`/`glueHmax`:**
+**Алгоритм склейки `glued`:**
 
 1. Коэффициент `k = mean(Photon / Analog)` вычисляется по точкам в интервале высот `[glueHmin, glueHmax]`.
 2. Результирующий сигнал для каждой точки:
@@ -355,7 +347,7 @@ Authorization: Bearer <token>
 
 | Код | Причина |
 |-----|---------|
-| 400 | Некорректные значения `polarization`/`channelType`/`plottype`, или `glueHmin`/`glueHmax` указаны без `channelType=glued` |
+| 400 | Некорректные значения `polarization`/`channelType`/`plottype`, или `glueHmin`/`glueHmax` не указаны при `channelType=glued`, или указаны без `glued` |
 | 500 | Ошибка генерации (например, нет профилей) |
 
 ---

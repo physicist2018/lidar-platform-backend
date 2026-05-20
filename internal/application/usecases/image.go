@@ -45,12 +45,6 @@ const (
 	marginTop    = 20
 	heatW        = imgWidth - marginLeft - marginRight
 	heatH        = imgHeight - marginTop - marginBottom
-
-	glueLower  = 1.0  // MHz, нижний порог области склейки
-	glueUpper  = 10.0 // MHz, верхний порог области склейки
-	glueMinPts = 20   // минимальное число точек для расчёта k в диапазоне [1;10] MHz
-	glueAltLo  = 5000 // fallback: нижняя граница высот (м)
-	glueAltHi  = 7000 // fallback: верхняя граница высот (м)
 )
 
 var ErrImageNotGenerated = errors.New("image not generated")
@@ -187,13 +181,7 @@ func computeGlueCoefficient(photon, analog *domain.ExperimentProfile, glueHmin, 
 		n = len(analog.Data)
 	}
 
-	var indices []int
-	if glueHmin != 0 || glueHmax != 0 {
-		indices = findGlueRegionByAltitudes(photon.Altitudes[:n], glueHmin, glueHmax)
-	} else {
-		indices = findGlueRegion(photon.Data[:n], photon.Altitudes[:n])
-	}
-
+	indices := findGlueRegionByAltitudes(photon.Altitudes[:n], glueHmin, glueHmax)
 	if len(indices) == 0 {
 		return 0
 	}
@@ -211,43 +199,6 @@ func computeGlueCoefficient(photon, analog *domain.ExperimentProfile, glueHmin, 
 		return 0
 	}
 	return sumRatio / float64(count)
-}
-
-func findGlueRegion(data, altitudes []float64) []int {
-	n := len(data)
-
-	// Попытка 1: непрерывный участок по Photon ∈ [1;10] MHz, ≥20 точек
-	bestStart, bestLen := -1, 0
-	start := -1
-	for i := 0; i < n; i++ {
-		if data[i] >= glueLower && data[i] <= glueUpper {
-			if start == -1 {
-				start = i
-			}
-			length := i - start + 1
-			if length >= glueMinPts && length > bestLen {
-				bestStart, bestLen = start, length
-			}
-		} else {
-			start = -1
-		}
-	}
-	if bestLen >= glueMinPts {
-		indices := make([]int, bestLen)
-		for j := 0; j < bestLen; j++ {
-			indices[j] = bestStart + j
-		}
-		return indices
-	}
-
-	// Попытка 2: fallback по высотам 5-7 км
-	var fallback []int
-	for i := 0; i < n; i++ {
-		if altitudes[i] >= glueAltLo && altitudes[i] <= glueAltHi {
-			fallback = append(fallback, i)
-		}
-	}
-	return fallback
 }
 
 func findGlueRegionByAltitudes(altitudes []float64, hmin, hmax float64) []int {
@@ -293,41 +244,21 @@ func gluePairs(photonList, analogList []*domain.ExperimentProfile, glueHmin, glu
 			NDataPoints:          photon.NDataPoints,
 		}
 		k := computeGlueCoefficient(photon, analog, glueHmin, glueHmax)
-		if glueHmin != 0 || glueHmax != 0 {
-			// User-specified interval: glue based on altitude range
-			for i := range photon.Data {
-				pVal := photon.Data[i]
-				aVal := analog.Data[i]
-				alt := photon.Altitudes[i]
-				switch {
-				case alt > glueHmax:
-					if k == 0 {
-						g.Data[i] = aVal
-					} else {
-						g.Data[i] = pVal
-					}
-				case alt < glueHmin:
+		for i := range photon.Data {
+			pVal := photon.Data[i]
+			aVal := analog.Data[i]
+			alt := photon.Altitudes[i]
+			switch {
+			case alt > glueHmax:
+				if k == 0 {
 					g.Data[i] = aVal
-				default:
-					g.Data[i] = (pVal + k*aVal) / 2.0
+				} else {
+					g.Data[i] = k * aVal
 				}
-			}
-		} else {
-			for i := range photon.Data {
-				pVal := photon.Data[i]
-				aVal := analog.Data[i]
-				switch {
-				case pVal > glueUpper:
-					if k == 0 {
-						g.Data[i] = aVal
-					} else {
-						g.Data[i] = k * pVal
-					}
-				case pVal < glueLower:
-					g.Data[i] = pVal
-				default:
-					g.Data[i] = (pVal + k*aVal) / 2.0
-				}
+			case alt < glueHmin:
+				g.Data[i] = aVal
+			default:
+				g.Data[i] = (pVal + k*aVal) / 2.0
 			}
 		}
 		glued = append(glued, g)

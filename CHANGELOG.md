@@ -4,19 +4,16 @@
 
 ### Added
 - `plottype="Raw"` в `POST /api/experiments/{id}/image` — возвращает сырой сигнал без `RangeCorrected`/`LogRangeCorrected` трансформации
-- Параметры `glueHmin`, `glueHmax` (float64, опциональны) в теле запроса `POST /api/experiments/{id}/image`: задают пользовательский диапазон высот для склейки photon/analog (только с `channelType=glued`)
+- Параметры `glueHmin`, `glueHmax` (float64, обязательны при `channelType=glued`) в теле запроса `POST /api/experiments/{id}/image`: задают диапазон высот для склейки photon/analog
   - Коэффициент `k` вычисляется по точкам в интервале `[glueHmin, glueHmax]`
-  - Выше `glueHmax` → `k*Analog`, ниже `glueHmin` → `Photon`, внутри → среднее
-  - Если не указаны — действует прежний алгоритм (1-10 MHz → fallback 5-7 км)
+  - Выше `glueHmax` → `k*Analog` (если `k=0` → `Analog`), ниже `glueHmin` → `Photon`, внутри → `(Photon + k*Analog) / 2`
 - `GET /api/experiments/{id}/profiles` — список профилей эксперимента (облегчённый, без массивов `Data`/`Altitudes`): поля id, measurementStartTime, measurementStopTime, active, photon, wavelength, polarization, hmin, hmax, bgrType
 
 ### Changed
-- `gluePairs`: новый алгоритм склейки photon/analog профилей:
-  - Коэффициент `k = mean(Photon/Analog)` вычисляется по непрерывному участку высот, где `Photon ∈ [1;10]` MHz и длина ≥ 20 точек; fallback — диапазон высот 5-7 км
-  - `Photon > 10 MHz` → `k * Analog` (при `k==0` → `Analog`)
-  - `Photon < 1 MHz` → `Photon`
-  - `1 ≤ Photon ≤ 10 MHz` → `(Photon + k*Analog) / 2`
-- `GetImage`: путь к изображению в MinIO берётся из записи `generated_images.ObjectPath` вместо ручной сборки (устойчивость к изменению формата имени файла)
+- `getImage`: путь к изображению в MinIO берётся из записи `generated_images.ObjectPath` вместо ручной сборки (устойчивость к изменению формата имени файла)
+
+### Removed
+- Старый алгоритм склейки `gluePairs` по диапазону MHz (1-10 MHz + fallback 5-7 км): заменён на явный диапазон высот `[glueHmin, glueHmax]`
 
 ## [0.6.0] — 2025-07-15
 

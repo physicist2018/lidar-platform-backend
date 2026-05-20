@@ -205,7 +205,11 @@ func (h *ExperimentHandler) GenerateImage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if (body.GlueHmin != 0 || body.GlueHmax != 0) && body.ChannelType != "glued" {
+	if body.ChannelType == "glued" && body.GlueHmin == 0 && body.GlueHmax == 0 {
+		http.Error(w, "glueHmin and glueHmax are required for channelType=glued", http.StatusBadRequest)
+		return
+	}
+	if body.ChannelType != "glued" && (body.GlueHmin != 0 || body.GlueHmax != 0) {
 		http.Error(w, "glueHmin/glueHmax require channelType=glued", http.StatusBadRequest)
 		return
 	}
