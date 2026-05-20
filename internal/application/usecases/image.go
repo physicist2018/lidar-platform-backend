@@ -304,10 +304,10 @@ func gluePairs(photonList, analogList []*domain.ExperimentProfile, glueHmin, glu
 					if k == 0 {
 						g.Data[i] = aVal
 					} else {
-						g.Data[i] = k * aVal
+						g.Data[i] = pVal
 					}
 				case alt < glueHmin:
-					g.Data[i] = pVal
+					g.Data[i] = aVal
 				default:
 					g.Data[i] = (pVal + k*aVal) / 2.0
 				}
@@ -321,7 +321,7 @@ func gluePairs(photonList, analogList []*domain.ExperimentProfile, glueHmin, glu
 					if k == 0 {
 						g.Data[i] = aVal
 					} else {
-						g.Data[i] = k * aVal
+						g.Data[i] = k * pVal
 					}
 				case pVal < glueLower:
 					g.Data[i] = pVal
