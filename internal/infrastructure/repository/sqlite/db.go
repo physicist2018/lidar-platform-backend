@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS generated_images (
     polarization TEXT NOT NULL,
     channel_type TEXT NOT NULL,
     plot_type TEXT NOT NULL,
+    image_type TEXT NOT NULL DEFAULT 'heatmap',
     created_at TEXT NOT NULL
 );
 

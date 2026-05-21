@@ -15,6 +15,15 @@
 ### Fixed
 - Исправлен алгоритм склейки `gluePairs`: выше `glueHmax` теперь используется чистый Photon (вместо `k*Analog`), ниже `glueHmin` — `k*Analog` (вместо чистого Analog). Средний диапазон `[glueHmin, glueHmax]` без изменений — `(Photon + k*Analog) / 2`
 
+### Added
+- `POST /api/experiments/{id}/profile` — генерация усреднённого по времени профиля (1D-график):
+  - Те же параметры, что у `/image`: `wavelength`, `polarization`, `channelType`, `plottype`, `glueHmin`, `glueHmax`
+  - Усреднение значений сигнала по всем профилям для каждой высоты
+  - Рендер PNG 1024×768: X — значение сигнала, Y — высота (Altitude, m), полилайн
+  - Сохранение в MinIO (`experiments/{id}/imgs/profile_*.png`) и запись в `generated_images` с `image_type = 'profile'`
+- Поле `ImageType` в `GeneratedImage` (`"heatmap"` | `"profile"`) и колонка `image_type` в таблице `generated_images`
+- Поле `ImageType` в `GeneratedImageParams` для раздельного поиска heatmap/profile
+
 ### Removed
 - Старый алгоритм склейки `gluePairs` по диапазону MHz (1-10 MHz + fallback 5-7 км): заменён на явный диапазон высот `[glueHmin, glueHmax]`
 

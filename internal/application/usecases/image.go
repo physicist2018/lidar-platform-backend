@@ -36,6 +36,20 @@ type GenerateImageResult struct {
 	Path string
 }
 
+type GenerateProfileInput struct {
+	ExperimentID string
+	Wavelength   float64
+	Polarization string
+	ChannelType  string
+	PlotType     string
+	GlueHmin     float64
+	GlueHmax     float64
+}
+
+type GenerateProfileResult struct {
+	Path string
+}
+
 const (
 	imgWidth     = 1024
 	imgHeight    = 768
@@ -61,6 +75,7 @@ func (uc *ExperimentUseCase) GetImage(ctx context.Context, experimentID, wavelen
 		Polarization: polarization,
 		ChannelType:  channelType,
 		PlotType:     plotType,
+		ImageType:    "heatmap",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("find generated image: %w", err)
@@ -77,6 +92,157 @@ func (uc *ExperimentUseCase) GetImage(ctx context.Context, experimentID, wavelen
 }
 
 func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateImageInput) (*GenerateImageResult, error) {
+	profiles, err := uc.loadProfilesForRendering(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(profiles) == 0 {
+		return nil, fmt.Errorf("no profiles found for given parameters")
+	}
+
+	sort.Slice(profiles, func(i, j int) bool {
+		return profiles[i].MeasurementStopTime.Before(profiles[j].MeasurementStopTime)
+	})
+
+	altitudes := extractCommonAltitudes(profiles)
+	if len(altitudes) == 0 {
+		return nil, fmt.Errorf("profiles have empty altitude grids")
+	}
+
+	matrix := buildDataMatrix(profiles, altitudes, input.PlotType)
+
+	pngBytes, err := renderHeatmap(matrix, altitudes, profiles, input)
+	if err != nil {
+		return nil, fmt.Errorf("render heatmap: %w", err)
+	}
+
+	fileName := fmt.Sprintf("time-height_%.1f_%s_%s_%s.png",
+		input.Wavelength, input.Polarization,
+		input.ChannelType, input.PlotType)
+	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
+
+	if err := uc.storage.Upload(ctx, objectPath, bytes.NewReader(pngBytes), int64(len(pngBytes)), "image/png"); err != nil {
+		return nil, fmt.Errorf("upload image: %w", err)
+	}
+
+	generatedImg := &domain.GeneratedImage{
+		ID:           uuid.New().String(),
+		ExperimentID: input.ExperimentID,
+		FileName:     fileName,
+		ObjectPath:   objectPath,
+		Wavelength:   input.Wavelength,
+		Polarization: input.Polarization,
+		ChannelType:  input.ChannelType,
+		PlotType:     input.PlotType,
+		ImageType:    "heatmap",
+		CreatedAt:    time.Now(),
+	}
+	if err := uc.generatedImage.Create(ctx, generatedImg); err != nil {
+		return nil, fmt.Errorf("save generated image: %w", err)
+	}
+
+	return &GenerateImageResult{Path: objectPath}, nil
+}
+
+func (uc *ExperimentUseCase) GenerateProfile(ctx context.Context, input GenerateProfileInput) (*GenerateProfileResult, error) {
+	profiles, err := uc.loadProfilesForRendering(ctx, GenerateImageInput{
+		ExperimentID: input.ExperimentID,
+		Wavelength:   input.Wavelength,
+		Polarization: input.Polarization,
+		ChannelType:  input.ChannelType,
+		GlueHmin:     input.GlueHmin,
+		GlueHmax:     input.GlueHmax,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(profiles) == 0 {
+		return nil, fmt.Errorf("no profiles found for given parameters")
+	}
+
+	altitudes := extractCommonAltitudes(profiles)
+	if len(altitudes) == 0 {
+		return nil, fmt.Errorf("profiles have empty altitude grids")
+	}
+
+	// average over time
+	averaged := make([]float64, len(altitudes))
+	counts := make([]int, len(altitudes))
+	for _, p := range profiles {
+		for a, alt := range altitudes {
+			val := interpolateProfile(p, alt)
+			if !math.IsNaN(val) {
+				averaged[a] += val
+				counts[a]++
+			}
+		}
+	}
+	for a := range altitudes {
+		if counts[a] > 0 {
+			averaged[a] /= float64(counts[a])
+		} else {
+			averaged[a] = math.NaN()
+		}
+	}
+
+	// apply plot type transformation
+	for a, alt := range altitudes {
+		v := averaged[a]
+		if math.IsNaN(v) {
+			continue
+		}
+		switch input.PlotType {
+		case "Raw":
+			// no transformation
+		case "RangeCorrected":
+			averaged[a] = v * alt * alt
+		case "LogRangeCorrected":
+			rc := v * alt * alt
+			if rc > 0 {
+				averaged[a] = math.Log10(rc)
+			} else {
+				averaged[a] = math.NaN()
+			}
+		}
+	}
+
+	pngBytes, err := renderProfile(altitudes, averaged)
+	if err != nil {
+		return nil, fmt.Errorf("render profile: %w", err)
+	}
+
+	fileName := fmt.Sprintf("profile_%.1f_%s_%s_%s.png",
+		input.Wavelength, input.Polarization,
+		input.ChannelType, input.PlotType)
+	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
+
+	if err := uc.storage.Upload(ctx, objectPath, bytes.NewReader(pngBytes), int64(len(pngBytes)), "image/png"); err != nil {
+		return nil, fmt.Errorf("upload profile image: %w", err)
+	}
+
+	generatedImg := &domain.GeneratedImage{
+		ID:           uuid.New().String(),
+		ExperimentID: input.ExperimentID,
+		FileName:     fileName,
+		ObjectPath:   objectPath,
+		Wavelength:   input.Wavelength,
+		Polarization: input.Polarization,
+		ChannelType:  input.ChannelType,
+		PlotType:     input.PlotType,
+		ImageType:    "profile",
+		CreatedAt:    time.Now(),
+	}
+	if err := uc.generatedImage.Create(ctx, generatedImg); err != nil {
+		return nil, fmt.Errorf("save generated profile image: %w", err)
+	}
+
+	return &GenerateProfileResult{Path: objectPath}, nil
+}
+
+// loadProfilesForRendering extracts the profile-loading logic shared by GenerateImage and GenerateProfile
+func (uc *ExperimentUseCase) loadProfilesForRendering(ctx context.Context, input GenerateImageInput) ([]*domain.ExperimentProfile, error) {
 	var profiles []*domain.ExperimentProfile
 
 	switch input.ChannelType {
@@ -127,52 +293,7 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 		}
 		profiles = gluePairs(photonList, analogList, input.GlueHmin, input.GlueHmax)
 	}
-
-	if len(profiles) == 0 {
-		return nil, fmt.Errorf("no profiles found for given parameters")
-	}
-
-	sort.Slice(profiles, func(i, j int) bool {
-		return profiles[i].MeasurementStopTime.Before(profiles[j].MeasurementStopTime)
-	})
-
-	altitudes := extractCommonAltitudes(profiles)
-	if len(altitudes) == 0 {
-		return nil, fmt.Errorf("profiles have empty altitude grids")
-	}
-
-	matrix := buildDataMatrix(profiles, altitudes, input.PlotType)
-
-	pngBytes, err := renderHeatmap(matrix, altitudes, profiles, input)
-	if err != nil {
-		return nil, fmt.Errorf("render heatmap: %w", err)
-	}
-
-	fileName := fmt.Sprintf("time-height_%.1f_%s_%s_%s.png",
-		input.Wavelength, input.Polarization,
-		input.ChannelType, input.PlotType)
-	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
-
-	if err := uc.storage.Upload(ctx, objectPath, bytes.NewReader(pngBytes), int64(len(pngBytes)), "image/png"); err != nil {
-		return nil, fmt.Errorf("upload image: %w", err)
-	}
-
-	generatedImg := &domain.GeneratedImage{
-		ID:           uuid.New().String(),
-		ExperimentID: input.ExperimentID,
-		FileName:     fileName,
-		ObjectPath:   objectPath,
-		Wavelength:   input.Wavelength,
-		Polarization: input.Polarization,
-		ChannelType:  input.ChannelType,
-		PlotType:     input.PlotType,
-		CreatedAt:    time.Now(),
-	}
-	if err := uc.generatedImage.Create(ctx, generatedImg); err != nil {
-		return nil, fmt.Errorf("save generated image: %w", err)
-	}
-
-	return &GenerateImageResult{Path: objectPath}, nil
+	return profiles, nil
 }
 
 func computeGlueCoefficient(photon, analog *domain.ExperimentProfile, glueHmin, glueHmax float64) float64 {
@@ -606,4 +727,115 @@ func interpolateTime(times []time.Time, frac float64) time.Time {
 	rem := f - float64(idx)
 	d := times[idx+1].Sub(times[idx])
 	return times[idx].Add(time.Duration(float64(d) * rem))
+}
+
+func renderProfile(altitudes []float64, values []float64) ([]byte, error) {
+	n := len(altitudes)
+	if n == 0 {
+		return nil, fmt.Errorf("empty profile")
+	}
+
+	vmin, vmax := math.MaxFloat64, -math.MaxFloat64
+	for _, v := range values {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			continue
+		}
+		if v < vmin {
+			vmin = v
+		}
+		if v > vmax {
+			vmax = v
+		}
+	}
+	if vmin == math.MaxFloat64 {
+		vmin, vmax = 0, 1
+	}
+	if vmin == vmax {
+		vmax = vmin + 1
+	}
+
+	altMin, altMax := altitudes[0], altitudes[n-1]
+	img := image.NewRGBA(image.Rect(0, 0, imgWidth, imgHeight))
+	fillRect(img, 0, 0, imgWidth, imgHeight, color.White)
+
+	// draw profile polyline
+	for i := 1; i < n; i++ {
+		if math.IsNaN(values[i-1]) || math.IsNaN(values[i]) {
+			continue
+		}
+		x0 := marginLeft + int((values[i-1]-vmin)/(vmax-vmin)*float64(heatW-1))
+		y0 := marginTop + heatH - int((altitudes[i-1]-altMin)/(altMax-altMin)*float64(heatH-1)) - 1
+		x1 := marginLeft + int((values[i]-vmin)/(vmax-vmin)*float64(heatW-1))
+		y1 := marginTop + heatH - int((altitudes[i]-altMin)/(altMax-altMin)*float64(heatH-1)) - 1
+		drawLine(img, x0, y0, x1, y1, color.Black)
+	}
+
+	// X-axis labels (Signal)
+	xTickCount := 6
+	for i := 0; i <= xTickCount; i++ {
+		frac := float64(i) / float64(xTickCount)
+		val := vmin + frac*(vmax-vmin)
+		x := marginLeft + int(frac*float64(heatW-1))
+		label := formatTick(val)
+		drawString(img, x, imgHeight-marginBottom/2+4, label, textAnchorCenter)
+	}
+
+	// Y-axis labels (Altitude)
+	yTickCount := 6
+	for i := 0; i <= yTickCount; i++ {
+		frac := float64(i) / float64(yTickCount)
+		alt := altMin + frac*(altMax-altMin)
+		y := marginTop + heatH - int(frac*float64(heatH))
+		label := fmt.Sprintf("%.0f", alt)
+		drawString(img, marginLeft-10, y+4, label, textAnchorRight)
+	}
+
+	// X-axis title
+	drawString(img, marginLeft+heatW/2, imgHeight-8, "Signal", textAnchorCenter)
+
+	// Y-axis title
+	drawVerticalString(img, 12, marginTop+heatH/2+40, "Altitude, m")
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func drawLine(img *image.RGBA, x0, y0, x1, y1 int, c color.Color) {
+	dx := abs(x1 - x0)
+	dy := -abs(y1 - y0)
+	sx, sy := 1, 1
+	if x0 > x1 {
+		sx = -1
+	}
+	if y0 > y1 {
+		sy = -1
+	}
+	err := dx + dy
+	for {
+		if x0 >= 0 && x0 < imgWidth && y0 >= 0 && y0 < imgHeight {
+			img.Set(x0, y0, c)
+		}
+		if x0 == x1 && y0 == y1 {
+			break
+		}
+		e2 := 2 * err
+		if e2 >= dy {
+			err += dy
+			x0 += sx
+		}
+		if e2 <= dx {
+			err += dx
+			y0 += sy
+		}
+	}
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

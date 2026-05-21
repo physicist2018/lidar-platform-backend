@@ -18,22 +18,26 @@ func NewGeneratedImageRepository(db *sql.DB) *GeneratedImageRepository {
 }
 
 func (r *GeneratedImageRepository) Create(ctx context.Context, img *domain.GeneratedImage) error {
+	imageType := img.ImageType
+	if imageType == "" {
+		imageType = "heatmap"
+	}
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO generated_images (id, experiment_id, file_name, object_path, wavelength, polarization, channel_type, plot_type, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO generated_images (id, experiment_id, file_name, object_path, wavelength, polarization, channel_type, plot_type, image_type, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		img.ID, img.ExperimentID, img.FileName, img.ObjectPath,
 		img.Wavelength, img.Polarization, img.ChannelType, img.PlotType,
-		img.CreatedAt.Format(time.RFC3339),
+		imageType, img.CreatedAt.Format(time.RFC3339),
 	)
 	return err
 }
 
 func (r *GeneratedImageRepository) FindByParams(ctx context.Context, params ports.GeneratedImageParams) (*domain.GeneratedImage, error) {
 	row := r.db.QueryRowContext(ctx,
-		`SELECT id, experiment_id, file_name, object_path, wavelength, polarization, channel_type, plot_type, created_at
+		`SELECT id, experiment_id, file_name, object_path, wavelength, polarization, channel_type, plot_type, image_type, created_at
 		 FROM generated_images
-		 WHERE experiment_id = ? AND wavelength = ? AND polarization = ? AND channel_type = ? AND plot_type = ?`,
-		params.ExperimentID, params.Wavelength, params.Polarization, params.ChannelType, params.PlotType,
+		 WHERE experiment_id = ? AND wavelength = ? AND polarization = ? AND channel_type = ? AND plot_type = ? AND image_type = ?`,
+		params.ExperimentID, params.Wavelength, params.Polarization, params.ChannelType, params.PlotType, params.ImageType,
 	)
 	return scanGeneratedImage(row)
 }
@@ -44,7 +48,7 @@ func scanGeneratedImage(row *sql.Row) (*domain.GeneratedImage, error) {
 	err := row.Scan(
 		&img.ID, &img.ExperimentID, &img.FileName, &img.ObjectPath,
 		&img.Wavelength, &img.Polarization, &img.ChannelType, &img.PlotType,
-		&createdAt,
+		&img.ImageType, &createdAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil

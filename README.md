@@ -352,6 +352,24 @@ Authorization: Bearer <token>
 
 ---
 
+### `POST /api/experiments/{id}/profile`
+
+Генерация усреднённого по времени профиля (1D-график) в формате PNG. Те же параметры, что у `/image`, но на выходе — усреднённый по всем профилям сигнал в виде полилайна.
+
+**Тело запроса (JSON):** идентично `POST .../image` — поля `wavelength`, `polarization`, `channelType`, `plottype`, `glueHmin`, `glueHmax`.
+
+**Ответ `200 OK`:**
+
+```json
+{
+  "path": "experiments/{id}/imgs/profile_532.0_o_glued_RangeCorrected.png"
+}
+```
+
+**Ошибки:** аналогичны `POST .../image`.
+
+---
+
 ### `GET /api/experiments/{id}/{wavelength}/{polarization}/{channelType}/{plotType}`
 
 Скачивание ранее сгенерированной time-height карты. Значения в URL должны совпадать с параметрами, использованными при генерации.

@@ -12,6 +12,7 @@ type GeneratedImageParams struct {
 	Polarization string
 	ChannelType  string
 	PlotType     string
+	ImageType    string // "heatmap" or "profile"
 }
 
 type GeneratedImageRepository interface {

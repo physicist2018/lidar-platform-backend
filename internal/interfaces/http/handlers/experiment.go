@@ -285,6 +285,68 @@ func (h *ExperimentHandler) ListProfiles(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(profiles)
 }
 
+func (h *ExperimentHandler) GenerateProfile(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		http.Error(w, "missing experiment id", http.StatusBadRequest)
+		return
+	}
+
+	var body struct {
+		Wavelength   float64 `json:"wavelength"`
+		Polarization string  `json:"polarization"`
+		ChannelType  string  `json:"channelType"`
+		PlotType     string  `json:"plottype"`
+		GlueHmin     float64 `json:"glueHmin"`
+		GlueHmax     float64 `json:"glueHmax"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if body.Polarization != "o" && body.Polarization != "p" && body.Polarization != "s" {
+		http.Error(w, "polarization must be 'o', 'p' or 's'", http.StatusBadRequest)
+		return
+	}
+	if body.ChannelType != "photon" && body.ChannelType != "analog" && body.ChannelType != "glued" {
+		http.Error(w, "channelType must be 'photon', 'analog' or 'glued'", http.StatusBadRequest)
+		return
+	}
+	if body.PlotType != "Raw" && body.PlotType != "RangeCorrected" && body.PlotType != "LogRangeCorrected" {
+		http.Error(w, "plottype must be 'Raw', 'RangeCorrected' or 'LogRangeCorrected'", http.StatusBadRequest)
+		return
+	}
+
+	if body.ChannelType == "glued" && body.GlueHmin == 0 && body.GlueHmax == 0 {
+		http.Error(w, "glueHmin and glueHmax are required for channelType=glued", http.StatusBadRequest)
+		return
+	}
+	if body.ChannelType != "glued" && (body.GlueHmin != 0 || body.GlueHmax != 0) {
+		http.Error(w, "glueHmin/glueHmax require channelType=glued", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.uc.GenerateProfile(r.Context(), usecases.GenerateProfileInput{
+		ExperimentID: id,
+		Wavelength:   body.Wavelength,
+		Polarization: body.Polarization,
+		ChannelType:  body.ChannelType,
+		PlotType:     body.PlotType,
+		GlueHmin:     body.GlueHmin,
+		GlueHmax:     body.GlueHmax,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"path": result.Path,
+	})
+}
+
 func (h *ExperimentHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
