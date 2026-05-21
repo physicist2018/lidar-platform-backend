@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Changed
+- Рефакторинг `internal/application/usecases/image.go` (932→281 строка):
+  - Низкоуровневый рендеринг графики вынесен в переиспользуемый пакет `pkg/plot/`:
+    - `pkg/plot/plot.go` — `RenderHeatmap`, `RenderProfile`, `DataRange`, `BilinearInterp`, `InterpolateTime`
+    - `pkg/plot/colormap.go` — `JetColormap`, `jetRGB`
+    - `pkg/plot/draw.go` — `DrawLine`, `DrawDashedLine`, `FillRect`, `DrawString`, `DrawVerticalString`, `DrawColorbarTicks`, `FormatTick`, `TextAnchor`
+  - Дублирующийся код осей/сетки вынесен в `drawPlotFrame()` (используется обоими рендерерами)
+  - `DrawLine`/`DrawDashedLine` используют `img.Bounds()` вместо хардкод-констант
+  - Бизнес-логика разделена на три файла по SRP:
+    - `image.go` — оркестрация (`GetImage`, `GenerateImage`, `GenerateProfile`, `loadProfilesForRendering`)
+    - `glue.go` — склейка каналов (`computeGlueCoefficient`, `findGlueRegionByAltitudes`, `gluePairs`)
+    - `profile_processing.go` — обработка профилей (`extractCommonAltitudes`, `buildDataMatrix`, `interpolateProfile`)
+  - Дублирующийся код `uploadAndSaveImage` вынесен в общий хелпер
+
 ### Added
 - Оси (сплошная чёрная линия) и линии сетки (штриховая светло-серая линия) на графиках heatmap и profile:
   - Функция `drawDashedLine` — рисует штриховую линию с настраиваемым шаблоном (6px штрих / 4px пробел)

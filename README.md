@@ -445,7 +445,9 @@ experiment not found
 │   │   └── usecases/                    # Бизнес-логика (юзкейсы)
 │   │       ├── auth.go                  #   AuthUseCase (Register, Login, Validate)
 │   │       ├── experiment.go            #   ExperimentUseCase (Create, Prepare, ListProfiles, ...)
-│   │       └── image.go                 #   Генерация time-height heatmap + склейка каналов
+│   │       ├── image.go                 #   Оркестрация генерации heatmap/profile
+│   │       ├── glue.go                  #   Склейка photon/analog каналов
+│   │       └── profile_processing.go    #   Обработка профилей (матрицы, интерполяция)
 │   ├── infrastructure/                  # Адаптеры внешних зависимостей
 │   │   ├── auth/
 │   │   │   ├── bcrypt.go                #   bcrypt-хешер паролей
@@ -474,7 +476,11 @@ experiment not found
 │           │   └── health.go            #   GET /health
 │           └── middleware/
 │               └── auth.go              #   JWT middleware (извлекает UserID в контекст)
-├── pkg/                                 # Переиспользуемые утилиты (пока пуст)
+├── pkg/
+│   └── plot/                            # Утилиты рендеринга графиков
+│       ├── plot.go                      #   RenderHeatmap, RenderProfile, DataRange, BilinearInterp
+│       ├── colormap.go                  #   JetColormap (jet colormap)
+│       └── draw.go                      #   DrawLine, DrawDashedLine, FillRect, DrawString, TextAnchor
 ├── configs/                             # Конфигурационные файлы
 ├── migrations/
 │   └── 001_init.sql                     # DDL-миграция (документационная копия)
