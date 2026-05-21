@@ -264,6 +264,36 @@ func (h *ExperimentHandler) DownloadImage(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (h *ExperimentHandler) DownloadImageJSON(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	wavelength := chi.URLParam(r, "wavelength")
+	polarization := chi.URLParam(r, "polarization")
+	channelType := chi.URLParam(r, "channelType")
+	plotType := chi.URLParam(r, "plotType")
+
+	if id == "" || wavelength == "" || polarization == "" || channelType == "" || plotType == "" {
+		http.Error(w, "missing path parameters", http.StatusBadRequest)
+		return
+	}
+
+	rc, err := h.uc.GetImageJSON(r.Context(), id, wavelength, polarization, channelType, plotType)
+	if err != nil {
+		if errors.Is(err, usecases.ErrImageNotGenerated) {
+			http.Error(w, "json not generated", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	defer rc.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if _, err := io.Copy(w, rc); err != nil {
+		log.Printf("failed to stream json: %v", err)
+	}
+}
+
 func (h *ExperimentHandler) ListProfiles(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
