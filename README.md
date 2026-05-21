@@ -331,8 +331,8 @@ Authorization: Bearer <token>
 
 1. Коэффициент `k = mean(Photon / Analog)` вычисляется по точкам в интервале высот `[glueHmin, glueHmax]`.
 2. Результирующий сигнал для каждой точки:
-   - `altitude > glueHmax` → `k * Analog` (если `k = 0`, то `Analog`)
-   - `altitude < glueHmin` → `Photon`
+   - `altitude > glueHmax` → `Photon`
+   - `altitude < glueHmin` → `k * Analog`
    - `glueHmin ≤ altitude ≤ glueHmax` → `(Photon + k*Analog) / 2`
 
 **Ответ `200 OK`:**

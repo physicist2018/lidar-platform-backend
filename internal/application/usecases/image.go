@@ -250,13 +250,9 @@ func gluePairs(photonList, analogList []*domain.ExperimentProfile, glueHmin, glu
 			alt := photon.Altitudes[i]
 			switch {
 			case alt > glueHmax:
-				if k == 0 {
-					g.Data[i] = aVal
-				} else {
-					g.Data[i] = k * aVal
-				}
+				g.Data[i] = pVal
 			case alt < glueHmin:
-				g.Data[i] = aVal
+				g.Data[i] = k * aVal
 			default:
 				g.Data[i] = (pVal + k*aVal) / 2.0
 			}

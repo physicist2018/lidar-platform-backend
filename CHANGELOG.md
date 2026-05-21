@@ -12,6 +12,9 @@
 ### Changed
 - `getImage`: путь к изображению в MinIO берётся из записи `generated_images.ObjectPath` вместо ручной сборки (устойчивость к изменению формата имени файла)
 
+### Fixed
+- Исправлен алгоритм склейки `gluePairs`: выше `glueHmax` теперь используется чистый Photon (вместо `k*Analog`), ниже `glueHmin` — `k*Analog` (вместо чистого Analog). Средний диапазон `[glueHmin, glueHmax]` без изменений — `(Photon + k*Analog) / 2`
+
 ### Removed
 - Старый алгоритм склейки `gluePairs` по диапазону MHz (1-10 MHz + fallback 5-7 км): заменён на явный диапазон высот `[glueHmin, glueHmax]`
 
