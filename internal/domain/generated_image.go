@@ -7,6 +7,7 @@ type GeneratedImage struct {
 	ExperimentID string
 	FileName     string
 	ObjectPath   string
+	JsonData     string
 	Wavelength   float64
 	Polarization string
 	ChannelType  string

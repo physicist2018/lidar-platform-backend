@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- Поле `JsonData` в `GeneratedImage` — путь к JSON-файлу в MinIO с данными для Plot.ly (heatmap/profile)
+- При генерации `/image` и `/profile` параллельно с PNG сохраняется JSON в `experiments/{id}/json/`:
+  - Heatmap: `{"z": [[...]], "y": [altitudes], "x": ["ISO8601", ...], "type": "heatmap"}`
+  - Profile: `{"x": [altitudes], "y": [averaged], "type": "scatter"}`
+- Миграция `002_add_json_data.sql`: колонка `json_data TEXT` в таблице `generated_images`
+
 ### Changed
 - Рефакторинг `internal/application/usecases/image.go` (932→281 строка):
   - Низкоуровневый рендеринг графики вынесен в переиспользуемый пакет `pkg/plot/`:

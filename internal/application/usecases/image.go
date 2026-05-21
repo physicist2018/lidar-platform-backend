@@ -3,6 +3,7 @@ package usecases
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -106,12 +107,23 @@ func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateIm
 		return nil, fmt.Errorf("render heatmap: %w", err)
 	}
 
-	fileName := fmt.Sprintf("time-height_%.1f_%s_%s_%s.png",
+	fileName := fmt.Sprintf("time-height_%.1f_%s_%s_%s",
 		input.Wavelength, input.Polarization,
 		input.ChannelType, input.PlotType)
-	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
+	objectPath := fmt.Sprintf("experiments/%s/imgs/%s.png", input.ExperimentID, fileName)
 
-	if err := uc.uploadAndSaveImage(ctx, input.ExperimentID, fileName, objectPath, input, "heatmap", pngBytes); err != nil {
+	jsonBytes, err := json.Marshal(plotlyHeatmapData{
+		Z:    matrix,
+		Y:    altitudes,
+		X:    formatTimesISO(times),
+		Type: "heatmap",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal plotly json: %w", err)
+	}
+	jsonPath := fmt.Sprintf("experiments/%s/json/%s.json", input.ExperimentID, fileName)
+
+	if err := uc.uploadAndSaveImage(ctx, input.ExperimentID, fileName, objectPath, jsonPath, input, "heatmap", pngBytes, jsonBytes); err != nil {
 		return nil, err
 	}
 
@@ -186,26 +198,40 @@ func (uc *ExperimentUseCase) GenerateProfile(ctx context.Context, input Generate
 		return nil, fmt.Errorf("render profile: %w", err)
 	}
 
-	fileName := fmt.Sprintf("profile_%.1f_%s_%s_%s.png",
+	fileName := fmt.Sprintf("profile_%.1f_%s_%s_%s",
 		input.Wavelength, input.Polarization,
 		input.ChannelType, input.PlotType)
-	objectPath := fmt.Sprintf("experiments/%s/imgs/%s", input.ExperimentID, fileName)
+	objectPath := fmt.Sprintf("experiments/%s/imgs/%s.png", input.ExperimentID, fileName)
 
-	if err := uc.uploadAndSaveImage(ctx, input.ExperimentID, fileName, objectPath, GenerateImageInput{
+	jsonBytes, err := json.Marshal(plotlyProfileData{
+		X:    altitudes,
+		Y:    averaged,
+		Type: "scatter",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal plotly json: %w", err)
+	}
+	jsonPath := fmt.Sprintf("experiments/%s/json/%s.json", input.ExperimentID, fileName)
+
+	if err := uc.uploadAndSaveImage(ctx, input.ExperimentID, fileName, objectPath, jsonPath, GenerateImageInput{
 		Wavelength:   input.Wavelength,
 		Polarization: input.Polarization,
 		ChannelType:  input.ChannelType,
 		PlotType:     input.PlotType,
-	}, "profile", pngBytes); err != nil {
+	}, "profile", pngBytes, jsonBytes); err != nil {
 		return nil, err
 	}
 
 	return &GenerateProfileResult{Path: objectPath}, nil
 }
 
-func (uc *ExperimentUseCase) uploadAndSaveImage(ctx context.Context, experimentID, fileName, objectPath string, input GenerateImageInput, imageType string, pngBytes []byte) error {
+func (uc *ExperimentUseCase) uploadAndSaveImage(ctx context.Context, experimentID, fileName, objectPath, jsonPath string, input GenerateImageInput, imageType string, pngBytes, jsonBytes []byte) error {
 	if err := uc.storage.Upload(ctx, objectPath, bytes.NewReader(pngBytes), int64(len(pngBytes)), "image/png"); err != nil {
 		return fmt.Errorf("upload image: %w", err)
+	}
+
+	if err := uc.storage.Upload(ctx, jsonPath, bytes.NewReader(jsonBytes), int64(len(jsonBytes)), "application/json"); err != nil {
+		return fmt.Errorf("upload json: %w", err)
 	}
 
 	generatedImg := &domain.GeneratedImage{
@@ -213,6 +239,7 @@ func (uc *ExperimentUseCase) uploadAndSaveImage(ctx context.Context, experimentI
 		ExperimentID: experimentID,
 		FileName:     fileName,
 		ObjectPath:   objectPath,
+		JsonData:     jsonPath,
 		Wavelength:   input.Wavelength,
 		Polarization: input.Polarization,
 		ChannelType:  input.ChannelType,
@@ -278,4 +305,25 @@ func (uc *ExperimentUseCase) loadProfilesForRendering(ctx context.Context, input
 		profiles = gluePairs(photonList, analogList, input.GlueHmin, input.GlueHmax)
 	}
 	return profiles, nil
+}
+
+type plotlyHeatmapData struct {
+	Z    [][]float64 `json:"z"`
+	Y    []float64   `json:"y"`
+	X    []string    `json:"x"`
+	Type string      `json:"type"`
+}
+
+type plotlyProfileData struct {
+	X    []float64 `json:"x"`
+	Y    []float64 `json:"y"`
+	Type string    `json:"type"`
+}
+
+func formatTimesISO(times []time.Time) []string {
+	out := make([]string, len(times))
+	for i, t := range times {
+		out[i] = t.Format(time.RFC3339)
+	}
+	return out
 }

@@ -352,6 +352,17 @@ Authorization: Bearer <token>
 }
 ```
 
+Помимо PNG, на MinIO сохраняется JSON с данными для Plot.ly по пути `experiments/{id}/json/time-height_*.json`:
+
+```json
+{
+  "z": [[...]],
+  "y": [1000, 1020, ...],
+  "x": ["2025-01-20T15:30:00Z", ...],
+  "type": "heatmap"
+}
+```
+
 **Ошибки:**
 
 | Код | Причина |
@@ -380,6 +391,16 @@ Authorization: Bearer <token>
 ```json
 {
   "path": "experiments/{id}/imgs/profile_532.0_o_glued_RangeCorrected.png"
+}
+```
+
+Помимо PNG, на MinIO сохраняется JSON с данными для Plot.ly по пути `experiments/{id}/json/profile_*.json`:
+
+```json
+{
+  "x": [1000, 1020, ...],
+  "y": [0.0012, 0.0015, ...],
+  "type": "scatter"
 }
 ```
 
@@ -483,7 +504,8 @@ experiment not found
 │       └── draw.go                      #   DrawLine, DrawDashedLine, FillRect, DrawString, TextAnchor
 ├── configs/                             # Конфигурационные файлы
 ├── migrations/
-│   └── 001_init.sql                     # DDL-миграция (документационная копия)
+│   ├── 001_init.sql                     # DDL-миграция (документационная копия)
+│   └── 002_add_json_data.sql            # Добавление колонки json_data в generated_images
 ├── go.mod
 ├── go.sum
 ├── AGENTS.md                            # Правила для AI-агентов

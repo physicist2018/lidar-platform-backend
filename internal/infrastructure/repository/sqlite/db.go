@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS generated_images (
     experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
     file_name TEXT NOT NULL,
     object_path TEXT NOT NULL,
+    json_data TEXT NOT NULL DEFAULT '',
     wavelength REAL NOT NULL,
     polarization TEXT NOT NULL,
     channel_type TEXT NOT NULL,
