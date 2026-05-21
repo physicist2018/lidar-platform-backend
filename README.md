@@ -433,9 +433,17 @@ GET /api/experiments/uuid/532.0/o/glued/RangeCorrected
 
 Скачивание Plot.ly JSON-данных ранее сгенерированного графика (heatmap или profile). Возвращает JSON, сохранённый параллельно с PNG при вызове `/image` или `/profile`.
 
-**Пример:**
+**Query-параметры:**
+
+| Параметр | Тип | По умолчанию | Допустимые значения |
+|----------|-----|--------------|---------------------|
+| `kind` | string | `heatmap` | `heatmap`, `profile` |
+
+**Примеры:**
 
 ```
+GET /api/experiments/uuid/532.0/o/glued/RangeCorrected/json?kind=heatmap
+GET /api/experiments/uuid/532.0/o/glued/RangeCorrected/json?kind=profile
 GET /api/experiments/uuid/532.0/o/glued/RangeCorrected/json
 ```
 
@@ -460,14 +468,14 @@ GET /api/experiments/uuid/532.0/o/glued/RangeCorrected/json
 }
 ```
 
-**Ответ `200 OK`:** `Content-Type: application/json`. Сначала ищется heatmap, при отсутствии — profile.
+**Ответ `200 OK`:** `Content-Type: application/json`. Тип графика определяется параметром `kind`.
 
 **Ошибки:**
 
 | Код | Причина |
 |-----|---------|
-| 400 | Не все параметры URL указаны |
-| 404 | JSON не был сгенерирован (не найдена ни heatmap, ни profile запись) |
+| 400 | Не все параметры URL указаны, или `kind` не равен `heatmap`/`profile` |
+| 404 | JSON не был сгенерирован для указанного `kind` |
 
 ---
 
