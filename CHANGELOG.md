@@ -8,6 +8,7 @@
   - Heatmap: `{"z": [[...]], "y": [altitudes], "x": ["ISO8601", ...], "type": "heatmap"}`
   - Profile: `{"x": [altitudes], "y": [averaged], "type": "scatter"}`
 - Миграция `002_add_json_data.sql`: колонка `json_data TEXT` в таблице `generated_images`
+- `GET /api/experiments/{id}/{wavelength}/{polarization}/{channelType}/{plotType}/json` — скачивание Plot.ly JSON ранее сгенерированного heatmap или profile
 
 ### Changed
 - Рефакторинг `internal/application/usecases/image.go` (932→281 строка):

@@ -429,6 +429,48 @@ GET /api/experiments/uuid/532.0/o/glued/RangeCorrected
 
 ---
 
+### `GET /api/experiments/{id}/{wavelength}/{polarization}/{channelType}/{plotType}/json`
+
+Скачивание Plot.ly JSON-данных ранее сгенерированного графика (heatmap или profile). Возвращает JSON, сохранённый параллельно с PNG при вызове `/image` или `/profile`.
+
+**Пример:**
+
+```
+GET /api/experiments/uuid/532.0/o/glued/RangeCorrected/json
+```
+
+**Формат ответа (heatmap):**
+
+```json
+{
+  "z": [[0.001, 0.002, ...], ...],
+  "y": [1000, 1020, ...],
+  "x": ["2025-01-20T15:30:00Z", ...],
+  "type": "heatmap"
+}
+```
+
+**Формат ответа (profile):**
+
+```json
+{
+  "x": [1000, 1020, ...],
+  "y": [0.0012, 0.0015, ...],
+  "type": "scatter"
+}
+```
+
+**Ответ `200 OK`:** `Content-Type: application/json`. Сначала ищется heatmap, при отсутствии — profile.
+
+**Ошибки:**
+
+| Код | Причина |
+|-----|---------|
+| 400 | Не все параметры URL указаны |
+| 404 | JSON не был сгенерирован (не найдена ни heatmap, ни profile запись) |
+
+---
+
 ## Формат ошибок
 
 Все ошибки возвращаются с HTTP-статусом 4xx/5xx и plain-text сообщением:
