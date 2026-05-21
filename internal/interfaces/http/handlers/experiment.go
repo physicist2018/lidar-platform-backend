@@ -276,7 +276,16 @@ func (h *ExperimentHandler) DownloadImageJSON(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	rc, err := h.uc.GetImageJSON(r.Context(), id, wavelength, polarization, channelType, plotType)
+	kind := r.URL.Query().Get("kind")
+	if kind == "" {
+		kind = "heatmap"
+	}
+	if kind != "heatmap" && kind != "profile" {
+		http.Error(w, "kind must be 'heatmap' or 'profile'", http.StatusBadRequest)
+		return
+	}
+
+	rc, err := h.uc.GetImageJSON(r.Context(), id, wavelength, polarization, channelType, plotType, kind)
 	if err != nil {
 		if errors.Is(err, usecases.ErrImageNotGenerated) {
 			http.Error(w, "json not generated", http.StatusNotFound)

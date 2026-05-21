@@ -76,33 +76,32 @@ func (uc *ExperimentUseCase) GetImage(ctx context.Context, experimentID, wavelen
 	return rc, nil
 }
 
-func (uc *ExperimentUseCase) GetImageJSON(ctx context.Context, experimentID, wavelength, polarization, channelType, plotType string) (io.ReadCloser, error) {
+func (uc *ExperimentUseCase) GetImageJSON(ctx context.Context, experimentID, wavelength, polarization, channelType, plotType, imageType string) (io.ReadCloser, error) {
 	wavelengthFloat, err := strconv.ParseFloat(wavelength, 64)
 	if err != nil {
 		return nil, fmt.Errorf("invalid wavelength: %w", err)
 	}
 
-	for _, imageType := range []string{"heatmap", "profile"} {
-		img, err := uc.generatedImage.FindByParams(ctx, ports.GeneratedImageParams{
-			ExperimentID: experimentID,
-			Wavelength:   wavelengthFloat,
-			Polarization: polarization,
-			ChannelType:  channelType,
-			PlotType:     plotType,
-			ImageType:    imageType,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("find generated image: %w", err)
-		}
-		if img != nil && img.JsonData != "" {
-			rc, _, err := uc.storage.Download(ctx, img.JsonData)
-			if err != nil {
-				return nil, fmt.Errorf("json not found in storage: %w", err)
-			}
-			return rc, nil
-		}
+	img, err := uc.generatedImage.FindByParams(ctx, ports.GeneratedImageParams{
+		ExperimentID: experimentID,
+		Wavelength:   wavelengthFloat,
+		Polarization: polarization,
+		ChannelType:  channelType,
+		PlotType:     plotType,
+		ImageType:    imageType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("find generated image: %w", err)
 	}
-	return nil, ErrImageNotGenerated
+	if img == nil || img.JsonData == "" {
+		return nil, ErrImageNotGenerated
+	}
+
+	rc, _, err := uc.storage.Download(ctx, img.JsonData)
+	if err != nil {
+		return nil, fmt.Errorf("json not found in storage: %w", err)
+	}
+	return rc, nil
 }
 
 func (uc *ExperimentUseCase) GenerateImage(ctx context.Context, input GenerateImageInput) (*GenerateImageResult, error) {
