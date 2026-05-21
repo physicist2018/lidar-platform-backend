@@ -501,8 +501,38 @@ func renderHeatmap(matrix [][]float64, altitudes []float64, profiles []*domain.E
 	}
 	drawColorbarTicks(img, cbX, marginTop, heatH, vmin, vmax)
 
-	// Y-axis labels (altitudes)
+	// ----- grid lines (dashed) -----
+	gridColor := color.RGBA{200, 200, 200, 255}
+	axisColor := color.RGBA{0, 0, 0, 255}
+
 	yTickCount := 6
+	xTickCount := 8
+
+	// horizontal grid lines on Y-ticks
+	for i := 0; i <= yTickCount; i++ {
+		frac := float64(i) / float64(yTickCount)
+		y := marginTop + heatH - int(frac*float64(heatH))
+		drawDashedLine(img, marginLeft, y, marginLeft+heatW-1, y, gridColor, 6, 4)
+	}
+
+	// vertical grid lines on X-ticks
+	for i := 0; i <= xTickCount; i++ {
+		frac := float64(i) / float64(xTickCount)
+		x := marginLeft + int(frac*float64(heatW-1))
+		drawDashedLine(img, x, marginTop, x, marginTop+heatH-1, gridColor, 6, 4)
+	}
+
+	// ----- axis lines (solid border around plot area) -----
+	// top
+	drawLine(img, marginLeft, marginTop, marginLeft+heatW-1, marginTop, axisColor)
+	// bottom
+	drawLine(img, marginLeft, marginTop+heatH-1, marginLeft+heatW-1, marginTop+heatH-1, axisColor)
+	// left
+	drawLine(img, marginLeft, marginTop, marginLeft, marginTop+heatH-1, axisColor)
+	// right
+	drawLine(img, marginLeft+heatW-1, marginTop, marginLeft+heatW-1, marginTop+heatH-1, axisColor)
+
+	// Y-axis labels (altitudes)
 	for i := 0; i <= yTickCount; i++ {
 		frac := float64(i) / float64(yTickCount)
 		alt := altitudes[0] + frac*(altitudes[len(altitudes)-1]-altitudes[0])
@@ -516,7 +546,6 @@ func renderHeatmap(matrix [][]float64, altitudes []float64, profiles []*domain.E
 	for i, p := range profiles {
 		times[i] = p.MeasurementStopTime
 	}
-	xTickCount := 8
 	for i := 0; i <= xTickCount; i++ {
 		frac := float64(i) / float64(xTickCount)
 		tm := interpolateTime(times, frac)
@@ -770,8 +799,34 @@ func renderProfile(altitudes []float64, values []float64) ([]byte, error) {
 		drawLine(img, x0, y0, x1, y1, color.Black)
 	}
 
-	// X-axis labels (Signal)
+	// ----- grid lines (dashed) -----
+	gridColor := color.RGBA{200, 200, 200, 255}
+	axisColor := color.RGBA{0, 0, 0, 255}
+
 	xTickCount := 6
+	yTickCount := 6
+
+	// horizontal grid lines on Y-ticks
+	for i := 0; i <= yTickCount; i++ {
+		frac := float64(i) / float64(yTickCount)
+		y := marginTop + heatH - int(frac*float64(heatH))
+		drawDashedLine(img, marginLeft, y, marginLeft+heatW-1, y, gridColor, 6, 4)
+	}
+
+	// vertical grid lines on X-ticks
+	for i := 0; i <= xTickCount; i++ {
+		frac := float64(i) / float64(xTickCount)
+		x := marginLeft + int(frac*float64(heatW-1))
+		drawDashedLine(img, x, marginTop, x, marginTop+heatH-1, gridColor, 6, 4)
+	}
+
+	// ----- axis lines (solid border around plot area) -----
+	drawLine(img, marginLeft, marginTop, marginLeft+heatW-1, marginTop, axisColor)
+	drawLine(img, marginLeft, marginTop+heatH-1, marginLeft+heatW-1, marginTop+heatH-1, axisColor)
+	drawLine(img, marginLeft, marginTop, marginLeft, marginTop+heatH-1, axisColor)
+	drawLine(img, marginLeft+heatW-1, marginTop, marginLeft+heatW-1, marginTop+heatH-1, axisColor)
+
+	// X-axis labels (Signal)
 	for i := 0; i <= xTickCount; i++ {
 		frac := float64(i) / float64(xTickCount)
 		val := vmin + frac*(vmax-vmin)
@@ -781,7 +836,6 @@ func renderProfile(altitudes []float64, values []float64) ([]byte, error) {
 	}
 
 	// Y-axis labels (Altitude)
-	yTickCount := 6
 	for i := 0; i <= yTickCount; i++ {
 		frac := float64(i) / float64(yTickCount)
 		alt := altMin + frac*(altMax-altMin)
@@ -818,6 +872,43 @@ func drawLine(img *image.RGBA, x0, y0, x1, y1 int, c color.Color) {
 		if x0 >= 0 && x0 < imgWidth && y0 >= 0 && y0 < imgHeight {
 			img.Set(x0, y0, c)
 		}
+		if x0 == x1 && y0 == y1 {
+			break
+		}
+		e2 := 2 * err
+		if e2 >= dy {
+			err += dy
+			x0 += sx
+		}
+		if e2 <= dx {
+			err += dx
+			y0 += sy
+		}
+	}
+}
+
+// drawDashedLine draws a dashed line using Bresenham's algorithm.
+// dashLen and gapLen define the dash pattern in pixels.
+func drawDashedLine(img *image.RGBA, x0, y0, x1, y1 int, c color.Color, dashLen, gapLen int) {
+	dx := abs(x1 - x0)
+	dy := -abs(y1 - y0)
+	sx, sy := 1, 1
+	if x0 > x1 {
+		sx = -1
+	}
+	if y0 > y1 {
+		sy = -1
+	}
+	err := dx + dy
+	step := 0
+	period := dashLen + gapLen
+	for {
+		if step%period < dashLen {
+			if x0 >= 0 && x0 < imgWidth && y0 >= 0 && y0 < imgHeight {
+				img.Set(x0, y0, c)
+			}
+		}
+		step++
 		if x0 == x1 && y0 == y1 {
 			break
 		}

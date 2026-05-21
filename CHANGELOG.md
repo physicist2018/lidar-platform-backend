@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- Оси (сплошная чёрная линия) и линии сетки (штриховая светло-серая линия) на графиках heatmap и profile:
+  - Функция `drawDashedLine` — рисует штриховую линию с настраиваемым шаблоном (6px штрих / 4px пробел)
+  - На heatmap: 6 горизонтальных + 8 вертикальных линий сетки, рамка вокруг области графика
+  - На profile: 6 горизонтальных + 6 вертикальных линий сетки, рамка вокруг области графика
 - `plottype="Raw"` в `POST /api/experiments/{id}/image` — возвращает сырой сигнал без `RangeCorrected`/`LogRangeCorrected` трансформации
 - Параметры `glueHmin`, `glueHmax` (float64, обязательны при `channelType=glued`) в теле запроса `POST /api/experiments/{id}/image`: задают диапазон высот для склейки photon/analog
   - Коэффициент `k` вычисляется по точкам в интервале `[glueHmin, glueHmax]`
